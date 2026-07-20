@@ -40,6 +40,7 @@ npm run db:migrate   # cria as tabelas
 npm run db:rls       # cria o role studyos_app + as policies owner_isolation
 ```
 
+
 O `db:rls` cria o role de login `studyos_app` com `APP_DB_PASSWORD` e habilita RLS
 em toda tabela de tenant. O app então conecta como esse role, nunca como o owner.
 
