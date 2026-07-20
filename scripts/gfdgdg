@@ -1,0 +1,2 @@
+direta=postgresql://neondb_owner:npg_y2AznhZl5SeD@ep-noisy-base-awj0vupn.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+pooling=postgresql://neondb_owner:npg_y2AznhZl5SeD@ep-noisy-base-awj0vupn-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require

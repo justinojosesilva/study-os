@@ -1,0 +1,346 @@
+import {
+  pgTable,
+  pgEnum,
+  uuid,
+  text,
+  integer,
+  real,
+  boolean,
+  timestamp,
+  jsonb,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+export const goalCategory = pgEnum("goal_category", [
+  "faculdade",
+  "profissional",
+  "certificacao",
+]);
+
+export const goalStatus = pgEnum("goal_status", [
+  "active",
+  "paused",
+  "done",
+  "archived",
+]);
+
+export const topicStatus = pgEnum("topic_status", [
+  "todo",
+  "learning",
+  "mastered",
+]);
+
+export const materialType = pgEnum("material_type", [
+  "book",
+  "pdf",
+  "video",
+  "course",
+  "article",
+  "link",
+]);
+
+export const certificationStatus = pgEnum("certification_status", [
+  "planned", // on the radar, no exam booked
+  "scheduled", // exam booked (exam_date set)
+  "passed", // obtained
+  "failed", // attempted, didn't pass
+  "expired", // was obtained, now lapsed
+]);
+
+// ---------------------------------------------------------------------------
+// users — identity. Single-user today; the seam for real auth (Auth.js) later.
+// ---------------------------------------------------------------------------
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  weeklyGoalHours: integer("weekly_goal_hours").notNull().default(10),
+  // Minutes available to study per weekday, indexed 0=Sun..6=Sat. null = not
+  // set → the scheduler derives an even spread from weeklyGoalHours. No RLS
+  // (users is the identity table), so this stays a plain column here.
+  availability: jsonb("availability").$type<number[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// goals — a career/study objective with a "why" and a target date.
+// ---------------------------------------------------------------------------
+
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    why: text("why"),
+    category: goalCategory("category").notNull(),
+    targetDate: timestamp("target_date", { withTimezone: true }),
+    status: goalStatus("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("goals_owner_idx").on(t.ownerId)],
+);
+
+// ---------------------------------------------------------------------------
+// topics — units of content inside a goal. Progress is DERIVED from these
+// (weighted share of `mastered` topics), never stored on the goal.
+// ---------------------------------------------------------------------------
+
+export const topics = pgTable(
+  "topics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: topicStatus("status").notNull().default("todo"),
+    weight: integer("weight").notNull().default(1),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("topics_owner_idx").on(t.ownerId),
+    index("topics_goal_idx").on(t.goalId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// study_sessions — immutable event log. We never UPDATE a running total;
+// hours, streaks and the constancy heatmap are all aggregated from rows here.
+// `topicId` is nullable so logging unstructured study stays frictionless.
+// ---------------------------------------------------------------------------
+
+export const studySessions = pgTable(
+  "study_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id").references(() => topics.id, {
+      onDelete: "set null",
+    }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    durationMin: integer("duration_min").notNull(),
+    comprehension: integer("comprehension"), // 1-10 self-rating, nullable
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("sessions_owner_idx").on(t.ownerId),
+    index("sessions_owner_started_idx").on(t.ownerId, t.startedAt),
+    index("sessions_topic_idx").on(t.topicId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// materials — references (URL + progress), NOT hosted files. Avoids being a
+// file host (storage cost + LGPD). Optionally tied to a goal.
+// ---------------------------------------------------------------------------
+
+export const materials = pgTable(
+  "materials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
+    type: materialType("type").notNull(),
+    title: text("title").notNull(),
+    url: text("url"),
+    progressPct: integer("progress_pct").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("materials_owner_idx").on(t.ownerId),
+    index("materials_goal_idx").on(t.goalId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// flashcards — front/back study cards belonging to a topic (phase 2.1).
+// A topic has 0..N cards; the card is the unit of spaced repetition.
+// ---------------------------------------------------------------------------
+
+export const flashcards = pgTable(
+  "flashcards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    front: text("front").notNull(),
+    back: text("back").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("flashcards_owner_idx").on(t.ownerId),
+    index("flashcards_topic_idx").on(t.topicId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// flashcard_reviews — append-only spaced-repetition log (FSRS), per card.
+// Each row is one review event carrying the resulting FSRS card snapshot.
+// A card's current memory state = its most recent row; no row = a fresh card.
+// ---------------------------------------------------------------------------
+
+export const flashcardReviews = pgTable(
+  "flashcard_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    flashcardId: uuid("flashcard_id")
+      .notNull()
+      .references(() => flashcards.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(), // 1=again 2=hard 3=good 4=easy
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull(),
+    // Resulting FSRS card state (mirrors ts-fsrs Card):
+    state: integer("state").notNull(), // 0=new 1=learning 2=review 3=relearning
+    due: timestamp("due", { withTimezone: true }).notNull(),
+    stability: real("stability").notNull(),
+    difficulty: real("difficulty").notNull(),
+    elapsedDays: integer("elapsed_days").notNull().default(0),
+    scheduledDays: integer("scheduled_days").notNull().default(0),
+    learningSteps: integer("learning_steps").notNull().default(0),
+    reps: integer("reps").notNull().default(0),
+    lapses: integer("lapses").notNull().default(0),
+    lastReview: timestamp("last_review", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("card_reviews_owner_idx").on(t.ownerId),
+    index("card_reviews_card_reviewed_idx").on(t.flashcardId, t.reviewedAt),
+    index("card_reviews_owner_due_idx").on(t.ownerId, t.due),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// certifications — a credential the user targets or holds (the "certify" step
+// of the plan→execute→review→certify→résumé journey). Mutable stateful entity
+// (like goals), NOT an event log. Optionally linked to the goal that studies
+// for it, so exam readiness = the goal's derived mastered-weight %.
+// ---------------------------------------------------------------------------
+
+export const certifications = pgTable(
+  "certifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    provider: text("provider").notNull(), // AWS, Google Cloud, Microsoft, CNCF…
+    code: text("code"), // exam code, e.g. SAA-C03
+    status: certificationStatus("status").notNull().default("planned"),
+    examDate: timestamp("exam_date", { withTimezone: true }),
+    obtainedDate: timestamp("obtained_date", { withTimezone: true }),
+    expiresDate: timestamp("expires_date", { withTimezone: true }),
+    score: text("score"), // free-form: "820/1000", "Pass"
+    costCents: integer("cost_cents"), // investment tracking, nullable
+    credentialUrl: text("credential_url"), // verification link (Credly, etc.)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("certifications_owner_idx").on(t.ownerId),
+    index("certifications_goal_idx").on(t.goalId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// resume_profile — the editorial layer of the "currículo inteligente" (the
+// résumé capstone). One row per user. Skills, certifications and goals are
+// DERIVED live from the other tables; this stores only the human/AI-authored
+// bits: headline, summary, target role, contact and highlight bullets.
+// ---------------------------------------------------------------------------
+
+export type ResumeContact = {
+  name?: string;
+  email?: string;
+  location?: string;
+  linkedin?: string;
+  github?: string;
+};
+
+export const resumeProfiles = pgTable(
+  "resume_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    headline: text("headline"),
+    summary: text("summary"),
+    targetRole: text("target_role"),
+    contact: jsonb("contact").$type<ResumeContact>(),
+    highlights: jsonb("highlights").$type<string[]>(),
+    // Public sharing: an unguessable random slug + a publish flag. Only
+    // is_public rows are served at /r/[slug]. Slug is null until first publish.
+    publicSlug: text("public_slug"),
+    isPublic: boolean("is_public").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("resume_profiles_owner_idx").on(t.ownerId),
+    uniqueIndex("resume_profiles_slug_idx").on(t.publicSlug),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Inferred types — the single source of truth for the domain layer.
+// ---------------------------------------------------------------------------
+
+export type User = typeof users.$inferSelect;
+export type Goal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+export type Topic = typeof topics.$inferSelect;
+export type NewTopic = typeof topics.$inferInsert;
+export type StudySession = typeof studySessions.$inferSelect;
+export type NewStudySession = typeof studySessions.$inferInsert;
+export type Material = typeof materials.$inferSelect;
+export type NewMaterial = typeof materials.$inferInsert;
+export type Flashcard = typeof flashcards.$inferSelect;
+export type NewFlashcard = typeof flashcards.$inferInsert;
+export type FlashcardReview = typeof flashcardReviews.$inferSelect;
+export type NewFlashcardReview = typeof flashcardReviews.$inferInsert;
+export type Certification = typeof certifications.$inferSelect;
+export type NewCertification = typeof certifications.$inferInsert;
+export type ResumeProfile = typeof resumeProfiles.$inferSelect;
+export type NewResumeProfile = typeof resumeProfiles.$inferInsert;

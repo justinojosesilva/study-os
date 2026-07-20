@@ -1,26 +1,212 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --canvas: #fafaf9;
+  --surface: #ffffff;
+  --surface-2: #f5f5f4;
+  --line: #e7e5e4;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --faint: #8c857f; /* WCAG: darkened from #a8a29e (2.4:1) to clear the 3:1 UI/text floor */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --profissional: #1d6fc4;
+  --profissional-soft: #e6f1fb;
+  --faculdade: #0f7a5a;
+  --faculdade-soft: #e1f5ee;
+  --certificacao: #6d44c4;
+  --certificacao-soft: #efeafe;
+
+  --warning: #b4690e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #0c0a09;
+    --surface: #1c1917;
+    --surface-2: #262320;
+    --line: #2c2825;
+    --ink: #fafaf9;
+    --muted: #a8a29e;
+    --faint: #87817b; /* WCAG: lightened from #78716c (3.65:1) to reach AA text on dark */
+
+    --profissional: #6aa9e9;
+    --profissional-soft: #122740;
+    --faculdade: #45c39a;
+    --faculdade-soft: #0c2b23;
+    --certificacao: #ab92f0;
+    --certificacao-soft: #221a3a;
+
+    --warning: #e0903a;
   }
 }
 
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-warning: var(--warning);
+
+  --color-profissional: var(--profissional);
+  --color-profissional-soft: var(--profissional-soft);
+  --color-faculdade: var(--faculdade);
+  --color-faculdade-soft: var(--faculdade-soft);
+  --color-certificacao: var(--certificacao);
+  --color-certificacao-soft: var(--certificacao-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Reusable motion — entrance + bar fill. `both` fill mode holds the "from"
+     state before an animation-delay fires, so staggered lists don't flash. */
+  --animate-fade-in: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-grow-x: growX 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+/* Keyboard focus — one consistent ring on every focusable control. Uses
+   :focus-visible so pointer clicks stay clean; only keyboard/AT nav shows it.
+   Outline follows each element's own border-radius in modern browsers. */
+:focus-visible {
+  outline: 2px solid var(--profissional);
+  outline-offset: 2px;
+}
+/* Drop the UA focus ring where :focus fires without :focus-visible (mouse). */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes growX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Loading skeleton — a sweeping highlight over a muted block. The
+   reduced-motion guard freezes the sweep, leaving a calm static placeholder. */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--line) 37%,
+    var(--surface-2) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Press feedback — interactive surfaces yield slightly on tap/click. Native
+   buttons get it automatically; links/cards opt in via the `.press` class. */
+.press,
+button:not(:disabled) {
+  transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.press:active,
+button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+/* Respect users who ask for less motion: kill entrance/fill animations and the
+   press dip, but keep instant color/opacity feedback. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  .press:active {
+    transform: none;
+  }
+}
+
+/* Elevation: floating layers (modals/popovers) lift off the backdrop with a
+   hairline edge + soft shadow. Flat tiles and raised cards stay shadowless. */
+dialog {
+  border: 0.5px solid var(--line);
+  box-shadow: 0 24px 64px -24px rgb(0 0 0 / 0.7);
+}
+
+/* Refined thin scrollbars (desktop polish). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+
+/* Print — strip the app shell and editor chrome so only the résumé sheet prints,
+   forced to clean black-on-white regardless of the on-screen theme. */
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  .lg\:pl-60 {
+    padding-left: 0 !important;
+  }
+  .resume-grid {
+    display: block !important;
+  }
+  body {
+    background: #fff;
+  }
+  .resume-sheet {
+    max-width: 100% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .resume-sheet,
+  .resume-sheet * {
+    color: #111 !important;
+  }
+  .resume-sheet [class*="border"] {
+    border-color: #ddd !important;
+  }
 }

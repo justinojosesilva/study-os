@@ -1,0 +1,99 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { getCurrentUserId, scoped } from "@/domain/auth";
+import { analyzeGoalGaps, type AnalysisResult } from "@/domain/ai/gapAnalysis";
+import { generateRoadmap, type RoadmapResult } from "@/domain/ai/roadmap";
+import {
+  generateFlashcards,
+  type FlashcardGenResult,
+} from "@/domain/ai/flashcardGen";
+import { askTutor, type TutorMode, type TutorResult } from "@/domain/ai/tutor";
+import { createGoal, getGoalWithTopics } from "@/domain/goals/repository";
+import { createTopic } from "@/domain/topics/repository";
+import { getTopicContext } from "@/domain/flashcards/repository";
+
+// AI actions read tenant context inside a short RLS-scoped transaction, then
+// call the model OUTSIDE it — we never hold a DB transaction open across the
+// multi-second model round-trip.
+
+export async function analyzeGoalGapsAction(goalId: string): Promise<AnalysisResult> {
+  const goal = await scoped((ownerId) => getGoalWithTopics(ownerId, goalId));
+  if (!goal) return { ok: false, error: "Objetivo não encontrado." };
+  return analyzeGoalGaps(goal);
+}
+
+export async function generateRoadmapAction(
+  target: string,
+  context?: string,
+): Promise<RoadmapResult> {
+  await getCurrentUserId(); // ensure authenticated; no tenant DB access
+  return generateRoadmap(target, context);
+}
+
+export async function generateFlashcardsAction(
+  topicId: string,
+  content?: string,
+): Promise<FlashcardGenResult> {
+  const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
+  if (!ctx) return { ok: false, error: "Tópico não encontrado." };
+  return generateFlashcards({
+    topicTitle: ctx.topicTitle,
+    goalTitle: ctx.goalTitle,
+    content,
+  });
+}
+
+export async function askTutorAction(
+  topicId: string,
+  mode: TutorMode,
+  question?: string,
+): Promise<TutorResult> {
+  const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
+  if (!ctx) return { ok: false, error: "Tópico não encontrado." };
+  return askTutor({
+    topicTitle: ctx.topicTitle,
+    goalTitle: ctx.goalTitle,
+    mode,
+    question,
+  });
+}
+
+export type AdoptResult = { ok: true; goalId: string } | { ok: false; error: string };
+
+export async function adoptRoadmapAction(input: {
+  title: string;
+  summary: string;
+  months: number;
+  topics: string[];
+}): Promise<AdoptResult> {
+  const title = input.title.trim();
+  if (!title) return { ok: false, error: "Título ausente." };
+
+  let targetDate: Date | null = null;
+  if (input.months > 0) {
+    const d = new Date();
+    d.setMonth(d.getMonth() + Math.round(input.months));
+    targetDate = d;
+  }
+
+  return scoped(async (ownerId) => {
+    const goal = await createGoal({
+      ownerId,
+      title,
+      category: "profissional",
+      why: input.summary.trim() || null,
+      targetDate,
+    });
+
+    let order = 0;
+    for (const raw of input.topics) {
+      const topicTitle = raw.trim();
+      if (!topicTitle) continue;
+      await createTopic({ ownerId, goalId: goal.id, title: topicTitle, sortOrder: order++ });
+    }
+
+    revalidatePath("/");
+    return { ok: true, goalId: goal.id };
+  });
+}
