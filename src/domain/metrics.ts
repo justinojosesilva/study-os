@@ -1,7 +1,7 @@
 import { db } from "@/infra/db/client";
 import { studySessions, topics } from "@/infra/db/schema";
 import { and, eq, gte, sql } from "drizzle-orm";
-import { toDateKey } from "@/lib/date";
+import { toDateKey, addDays } from "@/lib/date";
 
 /**
  * Everything here is DERIVED from the study_sessions event log and the topics
@@ -30,22 +30,23 @@ export async function minutesStudiedSince(ownerId: string, since: Date) {
  */
 export async function currentStreak(ownerId: string): Promise<number> {
   const rows = await db
-    .select({
-      day: sql<string>`date(${studySessions.startedAt})`,
-    })
+    .select({ startedAt: studySessions.startedAt })
     .from(studySessions)
-    .where(eq(studySessions.ownerId, ownerId))
-    .groupBy(sql`date(${studySessions.startedAt})`)
-    .orderBy(sql`date(${studySessions.startedAt}) desc`);
+    .where(eq(studySessions.ownerId, ownerId));
 
-  const days = new Set(rows.map((r) => r.day));
+  // Bucketed in JS rather than SQL date(): the database session runs in UTC, so
+  // date() files an evening session under the next day and silently breaks the
+  // streak. Same approach — and the same personal-scale volume argument — as
+  // dailyStudyMinutes below.
+  const days = new Set(rows.map((r) => toDateKey(r.startedAt)));
+
   let streak = 0;
-  const cursor = new Date();
+  let cursor = new Date();
   // Allow the streak to count today OR yesterday as the anchor.
-  if (!days.has(toISODate(cursor))) cursor.setDate(cursor.getDate() - 1);
-  while (days.has(toISODate(cursor))) {
+  if (!days.has(toDateKey(cursor))) cursor = addDays(cursor, -1);
+  while (days.has(toDateKey(cursor))) {
     streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
+    cursor = addDays(cursor, -1);
   }
   return streak;
 }
@@ -67,10 +68,6 @@ export async function goalProgressPct(goalId: string): Promise<number> {
   const mastered = Number(row?.mastered ?? 0);
   if (total === 0) return 0;
   return Math.round((mastered / total) * 100);
-}
-
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 /**

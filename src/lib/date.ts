@@ -1,4 +1,16 @@
-/** Local-time date helpers. The study week starts on Monday. */
+/**
+ * Local-time date helpers. The study week starts on Monday.
+ *
+ * "Local" here means APP_TIMEZONE, not the host's ambient timezone. The server
+ * process is pinned to it at startup (see `src/instrumentation.ts`) — without
+ * that pin, a host running in UTC (Vercel does) buckets an evening session into
+ * the *next* calendar day, shifting the agenda, heatmap and streak.
+ *
+ * This is the single timezone seam, mirroring `getCurrentUserId()`: when real
+ * multi-tenancy lands it becomes a `users.timezone` column and only these
+ * helpers change.
+ */
+export const APP_TIMEZONE = "America/Sao_Paulo";
 
 export function startOfToday(): Date {
   const d = new Date();
@@ -36,12 +48,35 @@ function startOfDay(date: Date): Date {
   return d;
 }
 
-/** Local-time "YYYY-MM-DD" key (not UTC) — stable bucket for a calendar day. */
+// en-CA renders as "YYYY-MM-DD", which is exactly the key format we want.
+const DATE_KEY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * "YYYY-MM-DD" key for the calendar day `date` falls on in APP_TIMEZONE.
+ *
+ * Anchored to the zone rather than the ambient one so the key is identical on
+ * the server and in the browser — the same session can't land on two different
+ * days. Never use `toISOString().slice(0, 10)` for this: it is always UTC, so
+ * anything after 21:00 in São Paulo would be filed under the next day.
+ */
 export function toDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return DATE_KEY_FORMAT.format(date);
+}
+
+const TIME_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: APP_TIMEZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** "21:00" — the wall-clock time in APP_TIMEZONE, not the viewer's. */
+export function formatTime(date: Date): string {
+  return TIME_FORMAT.format(date);
 }
 
 export function addDays(date: Date, days: number): Date {
