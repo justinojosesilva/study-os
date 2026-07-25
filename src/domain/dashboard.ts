@@ -50,7 +50,8 @@ export async function getDashboardData(ownerId: string): Promise<DashboardData> 
   };
 }
 
-async function goalsWithProgress(ownerId: string): Promise<DashboardGoal[]> {
+/** Active goals with derived progress. Shared by the dashboard and /goals. */
+export async function goalsWithProgress(ownerId: string): Promise<DashboardGoal[]> {
   const rows = await db
     .select({
       id: goals.id,

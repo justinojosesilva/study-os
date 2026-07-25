@@ -22,7 +22,14 @@ const SECTIONS: NavSection[] = [
   {
     label: "Estudo",
     items: [
-      { href: "/", label: "Dashboard", icon: Home, match: (p) => p === "/" || p.startsWith("/goals") },
+      { href: "/", label: "Dashboard", icon: Home, match: (p) => p === "/" },
+      // Also matches /goals/[id] and the exam pages, which live inside a goal.
+      {
+        href: "/goals",
+        label: "Objetivos",
+        icon: Target,
+        match: (p) => p.startsWith("/goals") || p.startsWith("/exams"),
+      },
       { href: "/agenda", label: "Agenda", icon: CalendarDays, match: (p) => p.startsWith("/agenda") },
       { href: "/review", label: "Revisão", icon: RefreshCw, match: (p) => p.startsWith("/review") },
     ],
@@ -117,7 +124,9 @@ export function AppShell({
             <Target size={15} />
           </span>
         </Link>
-        <nav className="flex items-center gap-0.5">
+        {/* Scrolls horizontally: the icon row is fixed-width per item, so on a
+            375px phone the full set would otherwise overflow the header. */}
+        <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {ALL_ITEMS.map((item) => {
             const active = item.match(pathname);
             const Icon = item.icon;
@@ -127,7 +136,7 @@ export function AppShell({
                 href={item.href}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                className={`press flex size-9 items-center justify-center rounded-lg ${
+                className={`press flex size-9 shrink-0 items-center justify-center rounded-lg ${
                   active ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"
                 }`}
               >

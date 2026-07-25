@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Flame, Target, ChevronRight, RefreshCw, Sparkles, Award, CalendarClock, CalendarDays } from "lucide-react";
+import { Flame, Target, RefreshCw, Sparkles, Award, CalendarClock, CalendarDays } from "lucide-react";
 import { scoped, getCurrentUser } from "@/domain/auth";
-import { getDashboardData, type DashboardGoal } from "@/domain/dashboard";
+import { getDashboardData } from "@/domain/dashboard";
 import { dailyStudyMinutes } from "@/domain/metrics";
 import { listArchivedGoals } from "@/domain/goals/repository";
 import { listTopicsForPicker } from "@/domain/topics/repository";
@@ -11,9 +11,10 @@ import { getGamification } from "@/domain/gamification";
 import { getUpcomingExam, type CertificationView } from "@/domain/certifications/repository";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { CATEGORY } from "@/lib/categories";
-import { formatMonthYear, daysUntil, startOfWeek, addDays, toDateKey } from "@/lib/date";
+import { daysUntil, startOfWeek, addDays, toDateKey } from "@/lib/date";
 import { SessionLogger } from "./_components/SessionLogger";
 import { NewGoalForm } from "./_components/NewGoalForm";
+import { GoalCard } from "./_components/GoalCard";
 import { Heatmap } from "./_components/Heatmap";
 import { WeeklyCard } from "./_components/WeeklyCard";
 import { LevelCard } from "./_components/LevelCard";
@@ -288,55 +289,4 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
   );
 }
 
-function GoalCard({ goal, index = 0 }: { goal: DashboardGoal; index?: number }) {
-  const cat = CATEGORY[goal.category];
-  const Icon = cat.Icon;
-
-  return (
-    <li
-      className="motion-safe:animate-fade-in"
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
-      <Link
-        href={`/goals/${goal.id}`}
-        className="press block rounded-xl border border-line bg-surface px-5 py-4 hover:bg-surface-2"
-      >
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Icon size={18} className={cat.text} />
-            <span className="truncate font-medium">{goal.title}</span>
-            <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${cat.soft} ${cat.text}`}>
-              {cat.label}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <TargetDate date={goal.targetDate} />
-            <ChevronRight size={16} className="text-faint" />
-          </div>
-        </div>
-
-        <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-          <div
-            className={`h-full origin-left ${cat.bar} motion-safe:animate-grow-x`}
-            style={{ width: `${goal.progressPct}%` }}
-          />
-        </div>
-        <p className="mt-2 text-sm text-muted">
-          {goal.progressPct}% — {goal.masteredTopics} de {goal.totalTopics} tópicos dominados
-        </p>
-      </Link>
-    </li>
-  );
-}
-
-function TargetDate({ date }: { date: Date | null }) {
-  if (!date) return null;
-  const days = daysUntil(date);
-  const soon = days >= 0 && days <= 14;
-  return (
-    <span className={`shrink-0 text-xs ${soon ? "text-warning" : "text-muted"}`}>
-      {soon ? `em ${days} dias` : formatMonthYear(date)}
-    </span>
-  );
-}
 
