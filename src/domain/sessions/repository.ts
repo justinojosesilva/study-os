@@ -33,6 +33,7 @@ export async function listSessionsBetween(ownerId: string, start: Date, end: Dat
       startedAt: studySessions.startedAt,
       durationMin: studySessions.durationMin,
       comprehension: studySessions.comprehension,
+      notes: studySessions.notes,
       topicTitle: topics.title,
     })
     .from(studySessions)

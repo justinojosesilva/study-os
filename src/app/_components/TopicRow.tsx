@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { setTopicStatusAction, deleteTopicAction } from "@/app/_actions/topics";
 import { FlashcardsDialog } from "./FlashcardsDialog";
 import { TutorDialog } from "./TutorDialog";
+import { LessonsDialog } from "./LessonsDialog";
 import type { Topic } from "@/infra/db/schema";
 
 const STATUSES = [
@@ -15,15 +16,18 @@ const STATUSES = [
 
 type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status">;
 type CardLite = { id: string; front: string; back: string };
+type LessonLite = { id: string; title: string };
 
 export function TopicRow({
   topic,
   goalId,
   cards,
+  lessons,
 }: {
   topic: TopicLite;
   goalId: string;
   cards: CardLite[];
+  lessons: LessonLite[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +59,13 @@ export function TopicRow({
       <span className="hidden text-xs text-faint sm:inline">peso {topic.weight}</span>
 
       <TutorDialog topicId={topic.id} topicTitle={topic.title} />
+
+      <LessonsDialog
+        topicId={topic.id}
+        topicTitle={topic.title}
+        goalId={goalId}
+        lessons={lessons}
+      />
 
       <FlashcardsDialog
         topicId={topic.id}

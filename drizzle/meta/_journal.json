@@ -64,6 +64,20 @@
       "when": 1783195010588,
       "tag": "0008_sparkling_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784847244542,
+      "tag": "0009_mean_scarecrow",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785012868004,
+      "tag": "0010_loose_chat",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,9 @@ const TENANT_TABLES = [
   "flashcard_reviews",
   "certifications",
   "resume_profiles",
+  "lessons",
+  "exams",
+  "exam_questions",
 ];
 
 // The restricted app role's password. In prod set APP_DB_PASSWORD; the app

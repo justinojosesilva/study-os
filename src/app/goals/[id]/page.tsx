@@ -5,6 +5,9 @@ import { scoped } from "@/domain/auth";
 import { getGoalWithTopics } from "@/domain/goals/repository";
 import { listFlashcardsForGoal } from "@/domain/flashcards/repository";
 import { listMaterialsForGoal } from "@/domain/materials/repository";
+import { listLessonsForGoal } from "@/domain/lessons/repository";
+import { listExamsForGoal } from "@/domain/exams/repository";
+import { ExamCard } from "@/app/_components/ExamCard";
 import {
   listCertificationsForGoal,
   type CertificationView,
@@ -33,16 +36,24 @@ export default async function GoalDetailPage({
   const goal = await getGoalWithTopics(ownerId, id);
   if (!goal) notFound();
 
-  const [allCards, materials, certs] = await Promise.all([
+  const [allCards, materials, certs, allLessons, examAttempts] = await Promise.all([
     listFlashcardsForGoal(ownerId, id),
     listMaterialsForGoal(ownerId, id),
     listCertificationsForGoal(ownerId, id),
+    listLessonsForGoal(ownerId, id),
+    listExamsForGoal(ownerId, id),
   ]);
   const cardsByTopic = new Map<string, { id: string; front: string; back: string }[]>();
   for (const c of allCards) {
     const list = cardsByTopic.get(c.topicId) ?? [];
     list.push({ id: c.id, front: c.front, back: c.back });
     cardsByTopic.set(c.topicId, list);
+  }
+  const lessonsByTopic = new Map<string, { id: string; title: string }[]>();
+  for (const l of allLessons) {
+    const list = lessonsByTopic.get(l.topicId) ?? [];
+    list.push({ id: l.id, title: l.title });
+    lessonsByTopic.set(l.topicId, list);
   }
 
   const cat = CATEGORY[goal.category];
@@ -134,6 +145,7 @@ export default async function GoalDetailPage({
                 topic={t}
                 goalId={goal.id}
                 cards={cardsByTopic.get(t.id) ?? []}
+                lessons={lessonsByTopic.get(t.id) ?? []}
               />
             ))}
           </ul>
@@ -142,6 +154,10 @@ export default async function GoalDetailPage({
       </section>
 
       <GapAnalysis goalId={goal.id} />
+
+      <div className="mt-4">
+        <ExamCard goalId={goal.id} progressPct={progressPct} attempts={examAttempts} />
+      </div>
 
       <section className="mt-6 rounded-xl border border-line bg-surface px-5 py-4">
         <h2 className="mb-1 text-base font-medium">Materiais</h2>

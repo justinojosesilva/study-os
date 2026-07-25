@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { CalendarDays, RefreshCw, Play } from "lucide-react";
+import { CalendarDays, RefreshCw, Play, Check } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { getAvailability } from "@/domain/user/repository";
 import { listTopicsForPicker, type PickerTopic } from "@/domain/topics/repository";
 import { listSessionsBetween } from "@/domain/sessions/repository";
-import { toDateKey, addDays, startOfToday } from "@/lib/date";
+import { toDateKey, addDays, startOfToday, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { AvailabilitySettings } from "@/app/_components/AvailabilitySettings";
 import { SessionLogger } from "@/app/_components/SessionLogger";
@@ -58,6 +58,8 @@ export default async function AgendaPage() {
         topicTitle: s.topicTitle,
         durationMin: s.durationMin,
         comprehension: s.comprehension,
+        startedAt: s.startedAt,
+        notes: s.notes,
       });
     }
     const hasPast = Object.keys(pastByDate).length > 0;
@@ -126,17 +128,82 @@ export default async function AgendaPage() {
               />
             </div>
 
-            {/* Mobile: the 7-day list. */}
+            {/* Mobile: the 7-day list, then what actually happened. The plan
+                only looks forward, so history needs its own section here —
+                on desktop it lives inside each day of the calendar. */}
             <div className="flex flex-col gap-3 lg:hidden">
               {plan.days.map((day) => (
                 <DayCard key={day.date.toISOString()} day={day} topics={topics} />
               ))}
+              {hasPast && <RecentHistory sessions={monthSessions} />}
             </div>
           </>
         )}
       </main>
     );
   });
+}
+
+type MonthSession = Awaited<ReturnType<typeof listSessionsBetween>>[number];
+
+/** This month's sessions, newest first, grouped by the day they happened on. */
+function RecentHistory({ sessions }: { sessions: MonthSession[] }) {
+  const byDay = new Map<string, MonthSession[]>();
+  for (const s of sessions) {
+    const key = toDateKey(s.startedAt);
+    const list = byDay.get(key) ?? [];
+    list.push(s);
+    byDay.set(key, list);
+  }
+  const days = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+
+  return (
+    <section className="mt-3 rounded-xl border border-line bg-surface px-5 py-4">
+      <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium">
+        <Check size={15} className="text-emerald-500" />
+        Histórico
+      </h2>
+      <div className="flex flex-col gap-4">
+        {days.map(([key, list]) => {
+          const total = list.reduce((sum, s) => sum + s.durationMin, 0);
+          return (
+            <div key={key}>
+              <p className="mb-1.5 flex items-baseline justify-between gap-2 text-xs text-muted">
+                <span className="font-medium capitalize text-ink">{dayLabelFromKey(key)}</span>
+                <span className="tabular-nums">{fmtMin(total)}</span>
+              </p>
+              <ul className="flex flex-col gap-1.5">
+                {list.map((s) => (
+                  <li key={s.id} className="rounded-lg border border-line px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        {s.topicTitle ?? "Estudo livre"}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2.5 text-xs text-muted tabular-nums">
+                        {s.comprehension != null && <span>{s.comprehension}/10</span>}
+                        <span>{formatTime(s.startedAt)}</span>
+                        <span className="font-medium text-ink">{fmtMin(s.durationMin)}</span>
+                      </span>
+                    </div>
+                    {s.notes && (
+                      <p className="mt-1 border-l-2 border-line pl-2 text-xs text-muted">{s.notes}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** "seg · 21/jul" from a "YYYY-MM-DD" key. */
+function dayLabelFromKey(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return `${WEEKDAY[date.getDay()]} · ${d}/${MONTHS_SHORT[m - 1]}`;
 }
 
 function DayCard({ day, topics }: { day: PlanDay; topics: PickerTopic[] }) {

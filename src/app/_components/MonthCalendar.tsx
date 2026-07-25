@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, X, Check } from "lucide-react";
 import { SessionLogger } from "./SessionLogger";
+import { formatTime } from "@/lib/date";
 import type { PickerTopic } from "@/domain/topics/repository";
 
 export type CalBlock = {
@@ -19,6 +20,8 @@ export type PastSession = {
   topicTitle: string | null;
   durationMin: number;
   comprehension: number | null;
+  startedAt: Date;
+  notes: string | null;
 };
 
 export type DayCell = {
@@ -151,7 +154,11 @@ export function MonthCalendar({
             </header>
 
             <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
-              {plan.length > 0 ? (
+              {plan.length === 0 && past.length === 0 && (
+                <p className="py-3 text-sm text-muted">Nada planejado para este dia.</p>
+              )}
+
+              {plan.length > 0 && (
                 <ul className="flex flex-col gap-2">
                   {plan.map((b, i) =>
                     b.kind === "review" ? (
@@ -188,31 +195,42 @@ export function MonthCalendar({
                     ),
                   )}
                 </ul>
-              ) : past.length > 0 ? (
-                <div>
-                  <p className="mb-2 text-xs text-muted">
-                    {fmtMin(pastTotal)} estudados · {past.length}{" "}
+              )}
+
+              {/* What actually happened. Shown alongside the plan, never instead
+                  of it — the days you studied are exactly the days that also
+                  have a plan, so an either/or hid the history when it mattered. */}
+              {past.length > 0 && (
+                <div className={plan.length > 0 ? "mt-5 border-t border-line pt-4" : undefined}>
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
+                    <Check size={13} className="text-emerald-500" />
+                    Estudado · {fmtMin(pastTotal)} em {past.length}{" "}
                     {past.length === 1 ? "sessão" : "sessões"}
                   </p>
                   <ul className="flex flex-col gap-2">
                     {past.map((s, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                          {s.topicTitle ?? "Estudo livre"}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-3 text-xs text-muted tabular-nums">
-                          {s.comprehension != null && <span>{s.comprehension}/10</span>}
-                          <span className="font-medium text-ink">{fmtMin(s.durationMin)}</span>
-                        </span>
+                      <li key={i} className="rounded-lg border border-line px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                            {s.topicTitle ?? "Estudo livre"}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-3 text-xs text-muted tabular-nums">
+                            {s.comprehension != null && <span>{s.comprehension}/10</span>}
+                            <span className="font-medium text-ink">{fmtMin(s.durationMin)}</span>
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-faint tabular-nums">
+                          {formatTime(s.startedAt)}
+                        </p>
+                        {s.notes && (
+                          <p className="mt-1.5 border-l-2 border-line pl-2 text-xs text-muted">
+                            {s.notes}
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>
                 </div>
-              ) : (
-                <p className="py-3 text-sm text-muted">Nada planejado para este dia.</p>
               )}
             </div>
           </div>

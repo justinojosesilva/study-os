@@ -249,6 +249,87 @@ export const flashcardReviews = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// exams — a generated assessment over a goal's topics. Persisted as attempts
+// (many per goal) so scores can be compared over time: the exam is how a
+// self-declared `mastered` gets checked against what was actually absorbed.
+// Questions live in their own table because results are read per TOPIC — that's
+// what drives reverting a topic to `learning` and seeding flashcards.
+// ---------------------------------------------------------------------------
+
+export const exams = pgTable(
+  "exams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    // null until submitted — an exam in progress has no score yet.
+    scorePct: integer("score_pct"),
+    feedback: text("feedback"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("exams_owner_idx").on(t.ownerId), index("exams_goal_idx").on(t.goalId)],
+);
+
+export const examQuestions = pgTable(
+  "exam_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    examId: uuid("exam_id")
+      .notNull()
+      .references(() => exams.id, { onDelete: "cascade" }),
+    // Kept even if the topic is deleted — the attempt stays readable.
+    topicId: uuid("topic_id").references(() => topics.id, { onDelete: "set null" }),
+    topicTitle: text("topic_title").notNull(),
+    prompt: text("prompt").notNull(),
+    options: jsonb("options").$type<string[]>().notNull(),
+    correctIndex: integer("correct_index").notNull(),
+    chosenIndex: integer("chosen_index"),
+    explanation: text("explanation").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [
+    index("exam_questions_owner_idx").on(t.ownerId),
+    index("exam_questions_exam_idx").on(t.examId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// lessons — authored study content (markdown) attached to a topic. Unlike
+// `materials` (external references), this stores the TEXT itself — the notes/
+// lessons the user writes or generates. Text is cheap; this is not a binary
+// file host. Rendered in-app on a dedicated reading page.
+// ---------------------------------------------------------------------------
+
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(), // markdown
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("lessons_owner_idx").on(t.ownerId),
+    index("lessons_topic_idx").on(t.topicId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // certifications — a credential the user targets or holds (the "certify" step
 // of the plan→execute→review→certify→résumé journey). Mutable stateful entity
 // (like goals), NOT an event log. Optionally linked to the goal that studies
@@ -342,5 +423,11 @@ export type FlashcardReview = typeof flashcardReviews.$inferSelect;
 export type NewFlashcardReview = typeof flashcardReviews.$inferInsert;
 export type Certification = typeof certifications.$inferSelect;
 export type NewCertification = typeof certifications.$inferInsert;
+export type Lesson = typeof lessons.$inferSelect;
+export type NewLesson = typeof lessons.$inferInsert;
+export type Exam = typeof exams.$inferSelect;
+export type NewExam = typeof exams.$inferInsert;
+export type ExamQuestion = typeof examQuestions.$inferSelect;
+export type NewExamQuestion = typeof examQuestions.$inferInsert;
 export type ResumeProfile = typeof resumeProfiles.$inferSelect;
 export type NewResumeProfile = typeof resumeProfiles.$inferInsert;
