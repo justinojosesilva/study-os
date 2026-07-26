@@ -3,6 +3,7 @@ import { scoped } from "@/domain/auth";
 import { getLessonForReading } from "@/domain/lessons/repository";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { LessonContent } from "@/app/_components/LessonContent";
+import { FloatingSessionLogger } from "@/app/_components/FloatingSessionLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         </p>
         <h1 className="mb-8 text-2xl font-medium tracking-tight">{lesson.title}</h1>
         <LessonContent content={lesson.content} />
+
+        <FloatingSessionLogger topicId={lesson.topicId} topicTitle={lesson.topicTitle} />
       </main>
     );
   });

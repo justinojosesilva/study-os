@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { Play, Pause, RotateCcw, X, Timer } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Play, Pause, RotateCcw, X, Timer, Coffee, SkipForward } from "lucide-react";
 import { logStudySession } from "@/app/_actions/sessions";
+import { useStudyTimer, MODES, fmtClock } from "./useStudyTimer";
+import { useAmbientPlayer } from "./useAmbientPlayer";
+import { useAmbientAudio, SYNTH_VOLUME_SCALE } from "./useAmbientAudio";
+import { SoundControl, useSoundPrefs } from "./SoundControl";
 import type { PickerTopic } from "@/domain/topics/repository";
-
-const MODES = [25, 50] as const;
 
 export function SessionLogger({
   topics,
@@ -21,44 +23,41 @@ export function SessionLogger({
   triggerClassName?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [focusLen, setFocusLen] = useState<number>(25);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [durationMin, setDurationMin] = useState(initialMinutes ?? 25);
+  const timer = useStudyTimer(initialMinutes);
+  const [manualDuration, setManualDuration] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const sound = useSoundPrefs();
 
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => setElapsedSec((s) => s + 1), 1000);
-    return () => clearInterval(id);
-  }, [running]);
+  const audio = useAmbientPlayer({
+    phase: timer.phase,
+    running: timer.running,
+    enabled: sound.enabled,
+    volume: sound.volume,
+  });
 
-  const targetSec = focusLen * 60;
-  const remaining = Math.max(0, targetSec - elapsedSec);
-  const focusedMin = Math.max(1, Math.round(elapsedSec / 60));
+  // Synthesised bed as a fallback: it plays only while this phase has no files,
+  // so the session is never silent before any music has been added.
+  useAmbientAudio({
+    phase: timer.phase,
+    running: timer.running,
+    enabled: sound.enabled && audio.hasTracks === false,
+    volume: sound.volume * SYNTH_VOLUME_SCALE,
+  });
 
-  useEffect(() => {
-    if (running && elapsedSec >= targetSec) {
-      setRunning(false);
-      setDurationMin(focusLen);
-    }
-  }, [running, elapsedSec, targetSec, focusLen]);
+  // The saved duration follows the timer instead of the preset: saving after
+  // 12 minutes of a 25-minute block used to log the full 25.
+  const suggested = timer.started
+    ? Math.max(1, timer.focusedMin)
+    : (initialMinutes ?? timer.mode.focus);
+  const durationMin = manualDuration ?? suggested;
+  const resting = timer.phase === "break";
 
-  function open() {
-    dialogRef.current?.showModal();
-  }
   function close() {
-    setRunning(false);
-    setElapsedSec(0);
+    timer.reset();
+    setManualDuration(null);
     setError(null);
     dialogRef.current?.close();
-  }
-  function pickMode(min: number) {
-    setFocusLen(min);
-    setDurationMin(min);
-    setElapsedSec(0);
-    setRunning(false);
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -76,7 +75,7 @@ export function SessionLogger({
   return (
     <>
       <button
-        onClick={open}
+        onClick={() => dialogRef.current?.showModal()}
         className={
           triggerClassName ??
           "inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
@@ -104,27 +103,50 @@ export function SessionLogger({
           </header>
 
           <div className="flex flex-col gap-5 px-5 py-5">
-            <div className="rounded-xl bg-surface-2 px-5 py-6 text-center">
+            <div
+              className={`rounded-xl px-5 py-6 text-center transition-colors ${
+                resting ? "bg-faculdade-soft" : "bg-surface-2"
+              }`}
+            >
+              <p
+                className={`mb-1 flex items-center justify-center gap-1.5 text-xs font-medium ${
+                  resting ? "text-faculdade" : "text-muted"
+                }`}
+              >
+                {resting ? (
+                  <>
+                    <Coffee size={13} /> Descanso
+                  </>
+                ) : (
+                  "Foco"
+                )}
+              </p>
+
               <div className="font-mono text-5xl tabular-nums tracking-tight">
-                {fmt(running || elapsedSec > 0 ? remaining : targetSec)}
+                {fmtClock(timer.remainingSec)}
               </div>
+
               <div className="mt-1 text-xs text-muted">
-                {focusLen} min de foco · {focusedMin} min acumulados
+                {timer.focusedMin} min de estudo
+                {timer.restedMin > 0 && ` · ${timer.restedMin} min de descanso`}
               </div>
 
               <div className="mt-4 flex items-center justify-center gap-2">
-                {MODES.map((m) => (
+                {MODES.map((m, i) => (
                   <button
-                    key={m}
+                    key={m.focus}
                     type="button"
-                    onClick={() => pickMode(m)}
+                    onClick={() => {
+                      timer.pickMode(i);
+                      setManualDuration(null);
+                    }}
                     className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                      focusLen === m
+                      timer.modeIndex === i
                         ? "bg-ink text-canvas"
                         : "bg-surface text-muted hover:text-ink"
                     }`}
                   >
-                    {m}/{m === 25 ? 5 : 10}
+                    {m.focus}/{m.rest}
                   </button>
                 ))}
               </div>
@@ -132,23 +154,50 @@ export function SessionLogger({
               <div className="mt-4 flex items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setRunning((r) => !r)}
+                  onClick={timer.toggle}
                   className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-canvas"
                 >
-                  {running ? <Pause size={16} /> : <Play size={16} />}
-                  {running ? "Pausar" : "Iniciar"}
+                  {timer.running ? <Pause size={16} /> : <Play size={16} />}
+                  {timer.running ? "Pausar" : resting ? "Descansar" : "Iniciar"}
                 </button>
+
+                {resting && (
+                  <button
+                    type="button"
+                    onClick={timer.skipBreak}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-ink"
+                  >
+                    <SkipForward size={15} /> Voltar ao foco
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
-                    setElapsedSec(0);
-                    setRunning(false);
+                    timer.reset();
+                    setManualDuration(null);
                   }}
                   aria-label="Reiniciar"
                   className="rounded-lg border border-line px-3 py-2 text-muted hover:text-ink"
                 >
                   <RotateCcw size={16} />
                 </button>
+              </div>
+
+              <div className="mx-auto mt-4 max-w-[240px]">
+                <SoundControl
+                  enabled={sound.enabled}
+                  onToggle={() => sound.setEnabled((v) => !v)}
+                  volume={sound.volume}
+                  onVolume={sound.setVolume}
+                />
+                <p className="mt-1 truncate text-[11px] text-faint">
+                  {audio.hasTracks === false
+                    ? `Som sintetizado · adicione faixas em public/audio/${resting ? "descanso" : "foco"}`
+                    : audio.blocked
+                      ? "O navegador bloqueou o áudio — toque em iniciar de novo"
+                      : (audio.currentTitle ?? (resting ? "Som de descanso" : "Som de foco"))}
+                </p>
               </div>
             </div>
 
@@ -173,7 +222,7 @@ export function SessionLogger({
                   type="number"
                   min={1}
                   value={durationMin}
-                  onChange={(e) => setDurationMin(Number(e.target.value))}
+                  onChange={(e) => setManualDuration(Number(e.target.value))}
                   className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
                 />
               </Field>
@@ -230,10 +279,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
-}
-
-function fmt(totalSec: number): string {
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
