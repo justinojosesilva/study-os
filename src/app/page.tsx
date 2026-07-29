@@ -62,7 +62,7 @@ export default async function DashboardPage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12">
+    <main className="mx-auto w-full max-w-[1600px] px-5 py-8 sm:py-12">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
           hint="Defina uma meta de carreira e quebre em tópicos para acompanhar a evolução."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex max-w-4xl flex-col gap-3">
           {data.goals.map((g, i) => (
             <GoalCard key={g.id} goal={g} index={i} />
           ))}
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
       {sessions.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-base font-medium">Sessões recentes</h2>
-          <ul className="overflow-hidden rounded-xl border border-line bg-surface">
+          <ul className="max-w-4xl overflow-hidden rounded-xl border border-line bg-surface">
             {sessions.map((s, i) => (
               <li
                 key={s.id}

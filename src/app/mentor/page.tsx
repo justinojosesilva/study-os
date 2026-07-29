@@ -9,7 +9,7 @@ export default async function MentorPage() {
   await getCurrentUserId(); // gate
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-8 sm:py-12">
+    <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Mentor" }]} />
 
       <h1 className="flex items-center gap-2 text-xl font-medium">

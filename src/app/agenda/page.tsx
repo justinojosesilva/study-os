@@ -90,7 +90,7 @@ export default async function AgendaPage() {
     }).format(today);
 
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-8 sm:py-12">
+      <main className="mx-auto w-full max-w-[1600px] px-5 py-8 sm:py-12">
         <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Agenda" }]} />
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">

@@ -75,7 +75,7 @@ export default async function GoalDetailPage({
   const progressPct = totalWeight === 0 ? 0 : Math.round((earnedWeight / totalWeight) * 100);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: goal.title }]} />
 
       <header className="mb-6">

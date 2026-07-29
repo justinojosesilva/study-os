@@ -19,7 +19,7 @@ export default async function GoalsPage() {
     ]);
 
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-8 sm:py-12">
+      <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:py-12">
         <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Objetivos" }]} />
 
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
