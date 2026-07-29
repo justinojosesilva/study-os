@@ -100,3 +100,67 @@ export async function applyPhases(
 
   return updated;
 }
+
+/**
+ * Moves a topic to another phase (or out of any phase, with null).
+ *
+ * Also renumbers the goal's `sortOrder`, which is load-bearing: the phase
+ * sequence on screen is derived from it, so a topic keeping a low sort order
+ * while jumping to a late phase would drag that whole phase to the top. The
+ * moved topic lands at the end of its new phase, and the existing order of the
+ * phases is preserved.
+ */
+export async function setTopicPhase(
+  ownerId: string,
+  topicId: string,
+  phase: string | null,
+): Promise<string | null> {
+  return db.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ goalId: topics.goalId })
+      .from(topics)
+      .where(and(eq(topics.ownerId, ownerId), eq(topics.id, topicId)))
+      .limit(1);
+    if (!target) return null;
+
+    const all = await tx
+      .select({ id: topics.id, phase: topics.phase })
+      .from(topics)
+      .where(and(eq(topics.ownerId, ownerId), eq(topics.goalId, target.goalId)))
+      .orderBy(asc(topics.sortOrder));
+
+    const next = phase?.trim() || null;
+
+    // Phase order as it stands today, ignoring the topic being moved so a
+    // single move can't invent a new position for its old phase.
+    const order: (string | null)[] = [];
+    for (const t of all) {
+      if (t.id === topicId) continue;
+      const key = t.phase?.trim() || null;
+      if (!order.includes(key)) order.push(key);
+    }
+    if (!order.includes(next)) order.push(next);
+
+    // Ungrouped always sits last — it's a staging area, not a stage.
+    order.sort((a, b) => (a === null ? 1 : b === null ? -1 : 0));
+
+    let sort = 0;
+    for (const key of order) {
+      const members = all.filter(
+        (t) => t.id !== topicId && (t.phase?.trim() || null) === key,
+      );
+      for (const m of members) {
+        await tx.update(topics).set({ sortOrder: sort++ }).where(eq(topics.id, m.id));
+      }
+      // The moved topic joins the end of its destination.
+      if (key === next) {
+        await tx
+          .update(topics)
+          .set({ phase: next, sortOrder: sort++ })
+          .where(eq(topics.id, topicId));
+      }
+    }
+
+    return target.goalId;
+  });
+}

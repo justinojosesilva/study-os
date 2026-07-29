@@ -47,6 +47,8 @@ export function TopicGroups({
     a === "" ? 1 : b === "" ? -1 : 0,
   );
   const grouped = ordered.some(([name]) => name !== "");
+  // Offered by each card's selector, so moving a topic never needs retyping.
+  const phaseNames = ordered.map(([name]) => name).filter(Boolean);
 
   function organize() {
     setError(null);
@@ -97,6 +99,7 @@ export function TopicGroups({
                   goalId={goalId}
                   cards={cardsByTopic.get(t.id) ?? []}
                   lessons={lessonsByTopic.get(t.id) ?? []}
+                  phases={phaseNames}
                 />
               ))}
             </ul>

@@ -2,31 +2,55 @@
 
 import { useState, useTransition } from "react";
 import { Trash2, Lock } from "lucide-react";
-import { setTopicStatusAction, deleteTopicAction } from "@/app/_actions/topics";
+import {
+  setTopicStatusAction,
+  setTopicPhaseAction,
+  deleteTopicAction,
+} from "@/app/_actions/topics";
 import { FlashcardsDialog } from "./FlashcardsDialog";
 import { TutorDialog } from "./TutorDialog";
 import { LessonsDialog } from "./LessonsDialog";
 import { TOPIC_STATUS, STATUS_FLOW, MANUAL_STATUSES, type TopicStatus } from "@/lib/topic-status";
 import type { Topic } from "@/infra/db/schema";
 
-type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status">;
+type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status" | "phase">;
 type CardLite = { id: string; front: string; back: string };
 type LessonLite = { id: string; title: string };
+
+const NEW_PHASE = "__nova__";
 
 export function TopicCard({
   topic,
   goalId,
   cards,
   lessons,
+  phases = [],
 }: {
   topic: TopicLite;
   goalId: string;
   cards: CardLite[];
   lessons: LessonLite[];
+  /** Phases already in use on this goal, offered as options. */
+  phases?: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [naming, setNaming] = useState(false);
+  const [newPhase, setNewPhase] = useState("");
   const style = TOPIC_STATUS[topic.status];
+
+  function movePhase(phase: string | null) {
+    setError(null);
+    startTransition(async () => {
+      const res = await setTopicPhaseAction(topic.id, phase);
+      if (res.ok) {
+        setNaming(false);
+        setNewPhase("");
+      } else {
+        setError(res.error);
+      }
+    });
+  }
 
   function setStatus(status: TopicStatus) {
     if (status === topic.status || !MANUAL_STATUSES.includes(status)) return;
@@ -91,6 +115,53 @@ export function TopicCard({
             );
           })}
         </div>
+
+        {naming ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newPhase.trim()) movePhase(newPhase);
+            }}
+            className="flex items-center gap-1"
+          >
+            <input
+              autoFocus
+              value={newPhase}
+              onChange={(e) => setNewPhase(e.target.value)}
+              onBlur={() => !newPhase.trim() && setNaming(false)}
+              placeholder="Nome da fase"
+              maxLength={60}
+              className="w-32 rounded-lg border border-line bg-surface px-2 py-1 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={pending || !newPhase.trim()}
+              className="rounded-lg border border-line px-2 py-1 text-xs font-medium disabled:opacity-50"
+            >
+              Mover
+            </button>
+          </form>
+        ) : (
+          <select
+            value={topic.phase ?? ""}
+            disabled={pending}
+            aria-label={`Fase de ${topic.title}`}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === NEW_PHASE) setNaming(true);
+              else movePhase(v || null);
+            }}
+            className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-muted"
+          >
+            <option value="">Sem fase</option>
+            {phases.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+            <option value={NEW_PHASE}>+ Nova fase…</option>
+          </select>
+        )}
 
         <span className="text-xs text-faint">peso {topic.weight}</span>
 

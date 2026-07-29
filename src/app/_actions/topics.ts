@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
-import { createTopic, setTopicStatus, deleteTopic } from "@/domain/topics/repository";
+import {
+  createTopic,
+  setTopicStatus,
+  setTopicPhase,
+  deleteTopic,
+} from "@/domain/topics/repository";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -55,6 +60,22 @@ export async function setTopicStatusAction(
 export async function deleteTopicAction(topicId: string): Promise<ActionResult> {
   return scoped(async (ownerId) => {
     const goalId = await deleteTopic(ownerId, topicId);
+    if (!goalId) return { ok: false, error: "Tópico não encontrado." };
+    revalidateGoal(goalId);
+    return { ok: true };
+  });
+}
+
+export async function setTopicPhaseAction(
+  topicId: string,
+  phase: string | null,
+): Promise<ActionResult> {
+  const clean = phase?.trim() || null;
+  if (clean && clean.length > 60) {
+    return { ok: false, error: "Nome de fase muito longo." };
+  }
+  return scoped(async (ownerId) => {
+    const goalId = await setTopicPhase(ownerId, topicId, clean);
     if (!goalId) return { ok: false, error: "Tópico não encontrado." };
     revalidateGoal(goalId);
     return { ok: true };
