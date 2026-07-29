@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, X, ArrowRight, RotateCcw, Layers } from "lucide-react";
+import { Check, X, ArrowRight, RotateCcw, Layers, Trophy } from "lucide-react";
 import { submitExamAction } from "@/app/_actions/exams";
 import type { GradedResult } from "@/domain/exams/repository";
 
@@ -136,13 +136,20 @@ function ResultPanel({ result, goalId }: { result: GradedResult; goalId: string 
         </span>
       </p>
 
-      {result.demotedTopics.length > 0 && (
+      {result.masteredTopics.length > 0 && (
         <p className="mt-3 flex items-start gap-1.5 text-sm text-muted">
-          <RotateCcw size={14} className="mt-0.5 shrink-0" />
+          <Trophy size={14} className="mt-0.5 shrink-0 text-emerald-500" />
           <span>
-            Voltaram para <strong className="font-medium text-ink">estudando</strong>:{" "}
-            {result.demotedTopics.join(", ")}
+            Agora <strong className="font-medium text-ink">dominado</strong>:{" "}
+            {result.masteredTopics.join(", ")}
           </span>
+        </p>
+      )}
+
+      {result.demotedTopics.length > 0 && (
+        <p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted">
+          <RotateCcw size={14} className="mt-0.5 shrink-0" />
+          <span>Voltaram um passo: {result.demotedTopics.join(", ")}</span>
         </p>
       )}
 
@@ -154,11 +161,14 @@ function ResultPanel({ result, goalId }: { result: GradedResult; goalId: string 
         </p>
       )}
 
-      {result.demotedTopics.length === 0 && result.cardsCreated === 0 && (
-        <p className="mt-2 text-sm text-muted">
-          Nenhum tópico precisou voltar para revisão — o domínio se confirmou.
-        </p>
-      )}
+      {result.masteredTopics.length === 0 &&
+        result.demotedTopics.length === 0 &&
+        result.cardsCreated === 0 && (
+          <p className="mt-2 text-sm text-muted">
+            Nada mudou de status — nenhum tópico caiu, e os que acertou ainda não estavam em
+            praticando.
+          </p>
+        )}
 
       <Link
         href={`/goals/${goalId}`}

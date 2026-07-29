@@ -29,9 +29,13 @@ export const goalStatus = pgEnum("goal_status", [
   "archived",
 ]);
 
+// The path a topic walks: read it, practise it, then prove it. `praticando`
+// sits between studying and mastery because doing the exercises is real
+// progress — and `mastered` is now earned by passing the exam, not declared.
 export const topicStatus = pgEnum("topic_status", [
   "todo",
   "learning",
+  "praticando",
   "mastered",
 ]);
 
@@ -111,6 +115,11 @@ export const topics = pgTable(
     title: text("title").notNull(),
     status: topicStatus("status").notNull().default("todo"),
     weight: integer("weight").notNull().default(1),
+    // Stage this topic belongs to ("Fundamentos", "Base", "Especialista"…). The
+    // roadmap already thinks in phases; this is where that survives adoption.
+    // Free text rather than an enum because the phases depend on the subject.
+    // Null means ungrouped, which is a normal state, not a defect.
+    phase: text("phase"),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

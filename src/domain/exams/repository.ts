@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/client";
 import { exams, examQuestions, topics, goals, flashcards } from "@/infra/db/schema";
-import { and, eq, asc, desc, isNotNull } from "drizzle-orm";
+import { and, eq, asc, desc, isNotNull, inArray, sql } from "drizzle-orm";
 
 export type NewQuestionInput = {
   topicId: string | null;
@@ -127,8 +127,10 @@ export type GradedResult = {
   scorePct: number;
   correct: number;
   total: number;
-  /** Topics the exam showed weren't actually mastered. */
+  /** Topics the exam knocked back a step. */
   demotedTopics: string[];
+  /** Topics promoted to mastered by answering everything right. */
+  masteredTopics: string[];
   cardsCreated: number;
 };
 
@@ -159,6 +161,8 @@ export async function submitExam(
 
     let correct = 0;
     const missedByTopic = new Map<string, typeof rows>();
+    // Topics this exam actually asked about — only those can move either way.
+    const testedTopics = new Set<string>();
 
     for (const q of rows) {
       const chosen = answers[q.id] ?? null;
@@ -166,6 +170,8 @@ export async function submitExam(
         .update(examQuestions)
         .set({ chosenIndex: chosen })
         .where(eq(examQuestions.id, q.id));
+
+      if (q.topicId) testedTopics.add(q.topicId);
 
       if (chosen === q.correctIndex) {
         correct += 1;
@@ -182,17 +188,25 @@ export async function submitExam(
       .set({ scorePct, feedback, completedAt: new Date() })
       .where(eq(exams.id, examId));
 
-    // Consequence 1: a missed topic is not mastered, whatever it claimed.
+    // Consequence 1: a miss costs the topic one step. Mastery drops back to
+    // practice rather than all the way to studying — getting a question wrong
+    // means the practice wasn't finished, not that the reading was wasted.
     const demotedTopics: string[] = [];
     for (const [topicId, missed] of missedByTopic) {
       const [demoted] = await tx
         .update(topics)
-        .set({ status: "learning" })
+        .set({
+          status: sql`case ${topics.status}
+            when 'mastered' then 'praticando'::topic_status
+            when 'praticando' then 'learning'::topic_status
+            else ${topics.status}
+          end`,
+        })
         .where(
           and(
             eq(topics.ownerId, ownerId),
             eq(topics.id, topicId),
-            eq(topics.status, "mastered"),
+            inArray(topics.status, ["mastered", "praticando"]),
           ),
         )
         .returning({ title: topics.title });
@@ -209,8 +223,35 @@ export async function submitExam(
       );
     }
 
+    // Consequence 3: the exam is the only way into `mastered`. A topic that was
+    // being practised and answered everything correctly here has earned it —
+    // mastery becomes evidence rather than a self-assessment.
+    const masteredTopics: string[] = [];
+    for (const topicId of testedTopics) {
+      if (missedByTopic.has(topicId)) continue;
+      const [promoted] = await tx
+        .update(topics)
+        .set({ status: "mastered" })
+        .where(
+          and(
+            eq(topics.ownerId, ownerId),
+            eq(topics.id, topicId),
+            eq(topics.status, "praticando"),
+          ),
+        )
+        .returning({ title: topics.title });
+      if (promoted) masteredTopics.push(promoted.title);
+    }
+
     const cardsCreated = [...missedByTopic.values()].reduce((n, l) => n + l.length, 0);
-    return { scorePct, correct, total: rows.length, demotedTopics, cardsCreated };
+    return {
+      scorePct,
+      correct,
+      total: rows.length,
+      demotedTopics,
+      masteredTopics,
+      cardsCreated,
+    };
   });
 }
 

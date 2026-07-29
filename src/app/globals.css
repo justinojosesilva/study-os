@@ -137,6 +137,65 @@ button:not(:disabled):active {
   transform: scale(0.985);
 }
 
+/* Tailwind v4's preflight dropped `cursor: pointer` from buttons (v3 applied
+   it), so every button here renders the default arrow. Restore it in one place
+   instead of scattering `cursor-pointer` across ~130 call sites. Anchors keep
+   the browser default, which is already correct. */
+button:not(:disabled),
+label:has(> input[type="file"]),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Tooltip for icon-only controls. The text comes from the `aria-label` the
+   control already carries for screen readers, so a label is never written
+   twice and can't drift. Opt in with `.tip`; `.tip-left` flips the side for
+   controls sitting near the right edge.
+
+   Deliberately not the native `title`: that waits about a second, can't be
+   styled, and never appears on touch — where the label simply doesn't apply. */
+.tip[aria-label] {
+  position: relative;
+}
+.tip[aria-label]::after {
+  content: attr(aria-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  width: max-content;
+  max-width: 15rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--ink);
+  color: var(--canvas);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease 0.35s;
+}
+.tip-left[aria-label]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.tip[aria-label]:hover::after,
+.tip[aria-label]:focus-visible::after {
+  opacity: 1;
+}
+/* A tooltip that follows the finger is just an obstruction. */
+@media (hover: none) {
+  .tip[aria-label]::after {
+    content: none;
+  }
+}
+
 /* Respect users who ask for less motion: kill entrance/fill animations and the
    press dip, but keep instant color/opacity feedback. */
 @media (prefers-reduced-motion: reduce) {

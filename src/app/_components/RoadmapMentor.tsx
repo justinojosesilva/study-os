@@ -45,7 +45,11 @@ export function RoadmapMentor() {
   function adopt() {
     if (!data) return;
     setError(null);
-    const topics = data.phases.flatMap((p) => p.topics);
+    // Carrega o nome da fase junto: antes o flatMap descartava o agrupamento
+    // que o roadmap tinha acabado de propor.
+    const topics = data.phases.flatMap((p) =>
+      p.topics.map((title) => ({ title, phase: p.name })),
+    );
     startAdopting(async () => {
       const res = await adoptRoadmapAction({
         title: data.goalTitle,

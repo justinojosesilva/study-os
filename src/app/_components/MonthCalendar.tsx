@@ -148,7 +148,7 @@ export function MonthCalendar({
           <div className="flex flex-col">
             <header className="flex items-center justify-between border-b border-line px-5 py-4">
               <span className="font-medium">{dayLabel(selected)}</span>
-              <button type="button" onClick={close} aria-label="Fechar" className="text-faint hover:text-ink">
+              <button type="button" onClick={close} aria-label="Fechar" className="tip text-faint hover:text-ink">
                 <X size={18} />
               </button>
             </header>

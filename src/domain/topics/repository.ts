@@ -59,3 +59,44 @@ export async function deleteTopic(
     .returning({ goalId: topics.goalId });
   return row?.goalId ?? null;
 }
+
+/**
+ * Applies a phase grouping to a goal's topics.
+ *
+ * Rewrites `sortOrder` to follow the phase sequence, so listing by sortOrder
+ * alone reproduces both the order of the phases and the order inside each —
+ * no second column and no sort key to keep in sync. Titles that don't match a
+ * topic are ignored, and topics the grouping missed keep their phase untouched.
+ */
+export async function applyPhases(
+  ownerId: string,
+  goalId: string,
+  phases: { name: string; topics: string[] }[],
+): Promise<number> {
+  const existing = await db
+    .select({ id: topics.id, title: topics.title })
+    .from(topics)
+    .where(and(eq(topics.ownerId, ownerId), eq(topics.goalId, goalId)));
+
+  const byTitle = new Map(existing.map((t) => [t.title.trim().toLowerCase(), t.id]));
+
+  let order = 0;
+  let updated = 0;
+  await db.transaction(async (tx) => {
+    for (const phase of phases) {
+      const name = phase.name.trim();
+      if (!name) continue;
+      for (const rawTitle of phase.topics) {
+        const id = byTitle.get(rawTitle.trim().toLowerCase());
+        if (!id) continue;
+        await tx
+          .update(topics)
+          .set({ phase: name, sortOrder: order++ })
+          .where(and(eq(topics.ownerId, ownerId), eq(topics.id, id)));
+        updated += 1;
+      }
+    }
+  });
+
+  return updated;
+}

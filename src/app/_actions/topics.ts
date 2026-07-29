@@ -6,7 +6,13 @@ import { createTopic, setTopicStatus, deleteTopic } from "@/domain/topics/reposi
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-const STATUSES = ["todo", "learning", "mastered"] as const;
+/**
+ * Statuses a person can set by hand. `mastered` is absent on purpose: it is
+ * awarded by passing the exam, so mastery stays evidence rather than a claim.
+ * Moving a mastered topic back down is still allowed — only the promotion is
+ * reserved for the exam.
+ */
+const STATUSES = ["todo", "learning", "praticando"] as const;
 type Status = (typeof STATUSES)[number];
 
 function revalidateGoal(goalId: string) {
@@ -35,7 +41,9 @@ export async function setTopicStatusAction(
   topicId: string,
   status: Status,
 ): Promise<ActionResult> {
-  if (!STATUSES.includes(status)) return { ok: false, error: "Status inválido." };
+  if (!STATUSES.includes(status)) {
+    return { ok: false, error: "Dominado é conquistado na prova, não marcado à mão." };
+  }
   return scoped(async (ownerId) => {
     const goalId = await setTopicStatus(ownerId, topicId, status);
     if (!goalId) return { ok: false, error: "Tópico não encontrado." };

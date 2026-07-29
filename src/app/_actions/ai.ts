@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId, scoped } from "@/domain/auth";
+import { proposePhases } from "@/domain/ai/topicPhases";
+import { applyPhases } from "@/domain/topics/repository";
 import { analyzeGoalGaps, type AnalysisResult } from "@/domain/ai/gapAnalysis";
 import { generateRoadmap, type RoadmapResult } from "@/domain/ai/roadmap";
 import {
@@ -65,7 +67,8 @@ export async function adoptRoadmapAction(input: {
   title: string;
   summary: string;
   months: number;
-  topics: string[];
+  /** Topics with the phase they came from — the roadmap's grouping, kept. */
+  topics: { title: string; phase: string | null }[];
 }): Promise<AdoptResult> {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "Título ausente." };
@@ -86,14 +89,41 @@ export async function adoptRoadmapAction(input: {
       targetDate,
     });
 
+    // Insert in roadmap order so `sortOrder` alone reconstructs both the
+    // sequence of phases and the sequence inside each one — no extra column.
     let order = 0;
     for (const raw of input.topics) {
-      const topicTitle = raw.trim();
+      const topicTitle = raw.title.trim();
       if (!topicTitle) continue;
-      await createTopic({ ownerId, goalId: goal.id, title: topicTitle, sortOrder: order++ });
+      await createTopic({
+        ownerId,
+        goalId: goal.id,
+        title: topicTitle,
+        phase: raw.phase?.trim() || null,
+        sortOrder: order++,
+      });
     }
 
     revalidatePath("/");
     return { ok: true, goalId: goal.id };
   });
+}
+
+export type PhasesActionResult =
+  | { ok: true; grouped: number; mocked: boolean }
+  | { ok: false; error: string };
+
+/** Groups a goal's existing topics into learning phases via the mentor. */
+export async function groupTopicsIntoPhasesAction(
+  goalId: string,
+): Promise<PhasesActionResult> {
+  const goal = await scoped((ownerId) => getGoalWithTopics(ownerId, goalId));
+  if (!goal) return { ok: false, error: "Objetivo não encontrado." };
+
+  const res = await proposePhases(goal);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  const grouped = await scoped((ownerId) => applyPhases(ownerId, goalId, res.data.phases));
+  revalidatePath(`/goals/${goalId}`);
+  return { ok: true, grouped, mocked: res.mocked };
 }

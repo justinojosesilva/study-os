@@ -137,7 +137,7 @@ export function FloatingSessionLogger({
                   type="button"
                   onClick={audio.skip}
                   aria-label="Próxima faixa"
-                  className="shrink-0 text-faint hover:text-ink"
+                  className="tip tip-left shrink-0 text-faint hover:text-ink"
                 >
                   <SkipForward size={13} />
                 </button>
@@ -203,7 +203,7 @@ export function FloatingSessionLogger({
           type="button"
           onClick={timer.toggle}
           aria-label={timer.running ? "Pausar" : resting ? "Descansar" : "Iniciar"}
-          className="press ml-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-canvas"
+          className="tip press ml-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-ink text-canvas"
         >
           {timer.running ? <Pause size={15} /> : <Play size={15} />}
         </button>
@@ -213,7 +213,7 @@ export function FloatingSessionLogger({
             type="button"
             onClick={timer.skipBreak}
             aria-label="Voltar ao foco"
-            className="press flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-ink"
+            className="tip tip-left press flex size-8 shrink-0 items-center justify-center rounded-full text-muted hover:text-ink"
           >
             <SkipForward size={15} />
           </button>

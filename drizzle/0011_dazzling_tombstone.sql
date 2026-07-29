@@ -1,0 +1,1 @@
+ALTER TYPE "public"."topic_status" ADD VALUE 'praticando' BEFORE 'mastered';

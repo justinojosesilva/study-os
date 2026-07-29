@@ -199,7 +199,7 @@ function CardItem({ card, goalId }: { card: Card; goalId: string }) {
           onClick={remove}
           disabled={pending}
           aria-label="Remover card"
-          className="text-faint transition-colors hover:text-red-600 disabled:opacity-50"
+          className="tip text-faint transition-colors hover:text-red-600 disabled:opacity-50"
         >
           <Trash2 size={15} />
         </button>

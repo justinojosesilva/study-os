@@ -96,7 +96,7 @@ export function SessionLogger({
               type="button"
               onClick={close}
               aria-label="Fechar"
-              className="text-faint hover:text-ink"
+              className="tip text-faint hover:text-ink"
             >
               <X size={18} />
             </button>

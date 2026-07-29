@@ -2,12 +2,15 @@ import { db } from "@/infra/db/client";
 import { studySessions, topics } from "@/infra/db/schema";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { toDateKey, addDays } from "@/lib/date";
+import { PRACTICING_CREDIT } from "@/lib/progress";
 
 /**
  * Everything here is DERIVED from the study_sessions event log and the topics
  * table — nothing is a stored counter. This is the core thesis of the model:
  * facts are append-only; metrics are computed on read.
  */
+
+export { PRACTICING_CREDIT } from "@/lib/progress";
 
 /** Total minutes studied since a given instant (e.g. start of the week). */
 export async function minutesStudiedSince(ownerId: string, since: Date) {
@@ -52,22 +55,39 @@ export async function currentStreak(ownerId: string): Promise<number> {
 }
 
 /**
- * Goal progress as the weighted share of mastered topics.
- * Returns 0..100. Derived, never stored.
+ * Weighted credit a topic contributes to its goal's progress: full for a
+ * mastered topic, half while it is being practised. Practising is real
+ * advancement, so a bar that ignored it would sit still through the longest
+ * part of the work — but it isn't mastery either, which the exam decides.
+ *
+ * Written as SQL so the two callers (a single goal, and the dashboard's
+ * grouped query) can't drift apart on what progress means.
+ */
+export const earnedWeightSql = sql<number>`coalesce(sum(
+  case ${topics.status}
+    when 'mastered' then ${topics.weight}::numeric
+    when 'praticando' then ${topics.weight}::numeric * ${PRACTICING_CREDIT}
+    else 0
+  end
+), 0)`;
+
+/**
+ * Goal progress as the weighted share of topics done, counting practice at
+ * half credit. Returns 0..100. Derived, never stored.
  */
 export async function goalProgressPct(goalId: string): Promise<number> {
   const [row] = await db
     .select({
       total: sql<number>`coalesce(sum(${topics.weight}), 0)`,
-      mastered: sql<number>`coalesce(sum(case when ${topics.status} = 'mastered' then ${topics.weight} else 0 end), 0)`,
+      earned: earnedWeightSql,
     })
     .from(topics)
     .where(eq(topics.goalId, goalId));
 
   const total = Number(row?.total ?? 0);
-  const mastered = Number(row?.mastered ?? 0);
+  const earned = Number(row?.earned ?? 0);
   if (total === 0) return 0;
-  return Math.round((mastered / total) * 100);
+  return Math.round((earned / total) * 100);
 }
 
 /**

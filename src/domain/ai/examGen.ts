@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { getGoalWithTopics } from "@/domain/goals/repository";
 import { CATEGORY } from "@/lib/categories";
+import { statusLabelPt } from "@/lib/topic-status";
 import { MODEL, isMockMode } from "./config";
 
 type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>;
@@ -9,9 +10,10 @@ type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>
  * Exam generation — the counterweight to self-declared mastery.
  *
  * `gapAnalysis` trusts topic status and asks "what's missing from the plan?".
- * This asks the opposite question: "is `mastered` actually true?". Questions are
- * tied back to a topic so a wrong answer can act on the domain — reverting the
- * topic to `learning` and seeding a flashcard — instead of just being a score.
+ * This asks the opposite question: "is this actually known?". Questions are tied
+ * back to a topic so the result can act on the domain — promoting a practised
+ * topic to `mastered`, knocking a missed one back a step, and seeding flashcards
+ * from the misses — instead of being just a score.
  */
 
 export const ExamSchema = z.object({
@@ -34,12 +36,16 @@ export type ExamGenResult =
 
 const SYSTEM = `Você é um examinador técnico sênior montando uma prova para avaliar o que o aluno
 REALMENTE absorveu de um objetivo de estudo. Gere questões de múltipla escolha (4 alternativas cada,
-exatamente uma correta) cobrindo os tópicos informados. Priorize tópicos marcados como "dominado" —
-o objetivo da prova é justamente verificar se esse domínio é verdadeiro — e dê mais questões aos
-tópicos de maior peso. Evite perguntas de decoreba: prefira aplicação, comparação e diagnóstico de
-cenários reais. "topicTitle" DEVE ser exatamente igual a um dos títulos de tópico fornecidos.
-"correctIndex" é o índice (base 0) da alternativa correta em "options". "explanation" explica por que
-a resposta certa está certa, em 1-2 frases. Responda SEMPRE em português do Brasil.`;
+exatamente uma correta) cobrindo os tópicos informados.
+
+Priorize nesta ordem: primeiro os tópicos em "praticando", porque acertar tudo neles é o que promove
+o tópico a "dominado"; depois os já "dominado", para confirmar que o domínio se sustenta; por último
+os em "estudando". Dê mais questões aos tópicos de maior peso.
+
+Evite perguntas de decoreba: prefira aplicação, comparação e diagnóstico de cenários reais.
+"topicTitle" DEVE ser exatamente igual a um dos títulos de tópico fornecidos. "correctIndex" é o
+índice (base 0) da alternativa correta em "options". "explanation" explica por que a resposta certa
+está certa, em 1-2 frases. Responda SEMPRE em português do Brasil.`;
 
 export async function generateExam(
   goal: GoalWithTopics,
@@ -49,7 +55,7 @@ export async function generateExam(
   if (topics.length === 0) {
     return {
       ok: false,
-      error: "Marque ao menos um tópico como estudando ou dominado antes de gerar a prova.",
+      error: "Comece ao menos um tópico (estudando ou praticando) antes de gerar a prova.",
     };
   }
 
@@ -86,7 +92,7 @@ function buildContext(
   questionCount: number,
 ): string {
   const lines = topics.map(
-    (t) => `- ${t.title} (status: ${statusLabel(t.status)}, peso: ${t.weight})`,
+    (t) => `- ${t.title} (status: ${statusLabelPt(t.status)}, peso: ${t.weight})`,
   );
   return [
     `Objetivo: ${goal.title}`,
@@ -101,9 +107,6 @@ function buildContext(
     .join("\n");
 }
 
-function statusLabel(s: string): string {
-  return s === "mastered" ? "dominado" : s === "learning" ? "estudando" : "a fazer";
-}
 
 // ---------------------------------------------------------------------------
 // Mock — round-robins the goal's own topics so the flow is usable without a key.

@@ -1,45 +1,41 @@
+import { TOPIC_STATUS, STATUS_FLOW, type TopicStatus } from "@/lib/topic-status";
 import type { Topic } from "@/infra/db/schema";
 
 /**
- * Proportional "waffle" of topic mastery — one cell per topic, colored by
- * status. Fills mastered → learning → todo so progress reads left-to-right.
- * A clearer proportion view than a single bar for the topic distribution.
+ * Proportional "waffle" of topic progress — one cell per topic, coloured by
+ * status. Reads right-to-left along the path a topic walks (mastered first),
+ * so the finished share is what the eye lands on.
+ *
+ * Statuses come from the shared list rather than being spelled out here: the
+ * previous version hard-coded three of them, so adding a fourth would have
+ * silently dropped those topics from both the grid and the legend.
  */
 
-const STATUS_META = {
-  mastered: { cls: "bg-faculdade", label: "Dominado" },
-  learning: { cls: "bg-warning", label: "Estudando" },
-  todo: { cls: "bg-surface-2", label: "A fazer" },
-} as const;
-
-const ORDER = ["mastered", "learning", "todo"] as const;
+const ORDER: TopicStatus[] = [...STATUS_FLOW].reverse();
 
 export function TopicWaffle({ topics }: { topics: Pick<Topic, "status" | "title">[] }) {
   if (topics.length === 0) return null;
 
-  const counts = {
-    mastered: topics.filter((t) => t.status === "mastered").length,
-    learning: topics.filter((t) => t.status === "learning").length,
-    todo: topics.filter((t) => t.status === "todo").length,
-  };
+  const counts = Object.fromEntries(
+    STATUS_FLOW.map((s) => [s, topics.filter((t) => t.status === s).length]),
+  ) as Record<TopicStatus, number>;
 
   const cells = ORDER.flatMap((status) =>
-    topics
-      .filter((t) => t.status === status)
-      .map((t) => ({ status, title: t.title })),
+    topics.filter((t) => t.status === status).map((t) => ({ status, title: t.title })),
   );
 
+  const summary = ORDER.filter((s) => counts[s] > 0)
+    .map((s) => `${counts[s]} ${TOPIC_STATUS[s].label.toLowerCase()}`)
+    .join(", ");
+
   return (
-    <div
-      role="img"
-      aria-label={`${counts.mastered} de ${topics.length} tópicos dominados, ${counts.learning} em estudo, ${counts.todo} a fazer.`}
-    >
+    <div role="img" aria-label={`${topics.length} tópicos: ${summary}.`}>
       <div className="flex flex-wrap gap-1.5">
         {cells.map((c, i) => (
           <span
             key={i}
-            title={`${STATUS_META[c.status].label} · ${c.title}`}
-            className={`size-4 rounded-[3px] ${STATUS_META[c.status].cls}`}
+            title={`${TOPIC_STATUS[c.status].label} · ${c.title}`}
+            className={`size-4 rounded-[3px] ${TOPIC_STATUS[c.status].bar}`}
           />
         ))}
       </div>
@@ -48,8 +44,8 @@ export function TopicWaffle({ topics }: { topics: Pick<Topic, "status" | "title"
         {ORDER.map((status) =>
           counts[status] > 0 ? (
             <span key={status} className="inline-flex items-center gap-1.5">
-              <span className={`size-2.5 rounded-[2px] ${STATUS_META[status].cls}`} />
-              {STATUS_META[status].label}
+              <span className={`size-2.5 rounded-[2px] ${TOPIC_STATUS[status].bar}`} />
+              {TOPIC_STATUS[status].label}
               <span className="tabular-nums text-faint">{counts[status]}</span>
             </span>
           ) : null,

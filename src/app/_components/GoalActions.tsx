@@ -59,7 +59,7 @@ export function GoalActions({ id, title, why, category, targetDate, archived }: 
           onClick={archive}
           disabled={pending}
           aria-label="Arquivar objetivo"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink hover:bg-surface-2 disabled:opacity-50"
+          className="tip inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink hover:bg-surface-2 disabled:opacity-50"
         >
           <Archive size={14} /> Arquivar
         </button>

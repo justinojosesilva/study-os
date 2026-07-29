@@ -7,6 +7,7 @@ import { listFlashcardsForGoal } from "@/domain/flashcards/repository";
 import { listMaterialsForGoal } from "@/domain/materials/repository";
 import { listLessonsForGoal } from "@/domain/lessons/repository";
 import { listExamsForGoal } from "@/domain/exams/repository";
+import { PRACTICING_CREDIT } from "@/lib/progress";
 import { ExamCard } from "@/app/_components/ExamCard";
 import {
   listCertificationsForGoal,
@@ -14,7 +15,7 @@ import {
 } from "@/domain/certifications/repository";
 import { CATEGORY } from "@/lib/categories";
 import { formatMonthYear, daysUntil, toDateKey } from "@/lib/date";
-import { TopicRow } from "@/app/_components/TopicRow";
+import { TopicGroups } from "@/app/_components/TopicGroups";
 import { AddTopicForm } from "@/app/_components/AddTopicForm";
 import { GoalActions } from "@/app/_components/GoalActions";
 import { MaterialRow } from "@/app/_components/MaterialRow";
@@ -59,11 +60,19 @@ export default async function GoalDetailPage({
   const cat = CATEGORY[goal.category];
   const Icon = cat.Icon;
 
+  // Same credit rule as goalProgressPct and the dashboard: practice counts half.
   const totalWeight = goal.topics.reduce((s, t) => s + t.weight, 0);
-  const masteredWeight = goal.topics
-    .filter((t) => t.status === "mastered")
-    .reduce((s, t) => s + t.weight, 0);
-  const progressPct = totalWeight === 0 ? 0 : Math.round((masteredWeight / totalWeight) * 100);
+  const earnedWeight = goal.topics.reduce(
+    (s, t) =>
+      s +
+      (t.status === "mastered"
+        ? t.weight
+        : t.status === "praticando"
+          ? t.weight * PRACTICING_CREDIT
+          : 0),
+    0,
+  );
+  const progressPct = totalWeight === 0 ? 0 : Math.round((earnedWeight / totalWeight) * 100);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12">
@@ -129,26 +138,23 @@ export default async function GoalDetailPage({
       )}
 
       <section className="rounded-xl border border-line bg-surface px-5 py-4">
-        <h2 className="mb-1 text-base font-medium">Tópicos</h2>
         {goal.topics.length === 0 ? (
-          <EmptyState
-            bordered={false}
-            icon={ListChecks}
-            title="Nenhum tópico ainda"
-            hint="Quebre o objetivo em partes estudáveis abaixo."
-          />
+          <>
+            <h2 className="mb-1 text-base font-medium">Tópicos</h2>
+            <EmptyState
+              bordered={false}
+              icon={ListChecks}
+              title="Nenhum tópico ainda"
+              hint="Quebre o objetivo em partes estudáveis abaixo."
+            />
+          </>
         ) : (
-          <ul className="flex flex-col">
-            {goal.topics.map((t) => (
-              <TopicRow
-                key={t.id}
-                topic={t}
-                goalId={goal.id}
-                cards={cardsByTopic.get(t.id) ?? []}
-                lessons={lessonsByTopic.get(t.id) ?? []}
-              />
-            ))}
-          </ul>
+          <TopicGroups
+            goalId={goal.id}
+            topics={goal.topics}
+            cardsByTopic={cardsByTopic}
+            lessonsByTopic={lessonsByTopic}
+          />
         )}
         <AddTopicForm goalId={goal.id} />
       </section>

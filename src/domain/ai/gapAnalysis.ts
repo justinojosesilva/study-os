@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { getGoalWithTopics } from "@/domain/goals/repository";
 import { CATEGORY } from "@/lib/categories";
+import { statusLabelPt } from "@/lib/topic-status";
 import { MODEL, isMockMode } from "./config";
 
 type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>;
@@ -76,7 +77,7 @@ export async function analyzeGoalGaps(goal: GoalWithTopics): Promise<AnalysisRes
 function buildContext(goal: GoalWithTopics): string {
   const cat = CATEGORY[goal.category].label;
   const lines = goal.topics.map(
-    (t) => `- ${t.title} (status: ${statusLabel(t.status)}, peso: ${t.weight})`,
+    (t) => `- ${t.title} (status: ${statusLabelPt(t.status)}, peso: ${t.weight})`,
   );
   return [
     `Objetivo: ${goal.title}`,
@@ -94,9 +95,6 @@ function buildContext(goal: GoalWithTopics): string {
     .join("\n");
 }
 
-function statusLabel(s: string): string {
-  return s === "mastered" ? "dominado" : s === "learning" ? "estudando" : "a fazer";
-}
 
 // ---------------------------------------------------------------------------
 // Mock — derives a plausible analysis from the goal's own data.

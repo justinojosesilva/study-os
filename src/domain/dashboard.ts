@@ -1,7 +1,7 @@
 import { db } from "@/infra/db/client";
 import { goals, topics } from "@/infra/db/schema";
 import { and, eq, asc, sql } from "drizzle-orm";
-import { minutesStudiedSince, currentStreak } from "./metrics";
+import { minutesStudiedSince, currentStreak, earnedWeightSql } from "./metrics";
 import { getWeeklyGoalHours } from "./user/repository";
 import { startOfWeek } from "@/lib/date";
 
@@ -13,6 +13,7 @@ export type DashboardGoal = {
   targetDate: Date | null;
   progressPct: number;
   masteredTopics: number;
+  practicingTopics: number;
   totalTopics: number;
 };
 
@@ -60,9 +61,11 @@ export async function goalsWithProgress(ownerId: string): Promise<DashboardGoal[
       why: goals.why,
       targetDate: goals.targetDate,
       totalWeight: sql<number>`coalesce(sum(${topics.weight}), 0)`,
-      masteredWeight: sql<number>`coalesce(sum(case when ${topics.status} = 'mastered' then ${topics.weight} else 0 end), 0)`,
+      // Shared with goalProgressPct so a goal's bar reads the same everywhere.
+      earnedWeight: earnedWeightSql,
       totalTopics: sql<number>`count(${topics.id})`,
       masteredTopics: sql<number>`count(*) filter (where ${topics.status} = 'mastered')`,
+      practicingTopics: sql<number>`count(*) filter (where ${topics.status} = 'praticando')`,
     })
     .from(goals)
     .leftJoin(topics, eq(topics.goalId, goals.id))
@@ -72,15 +75,16 @@ export async function goalsWithProgress(ownerId: string): Promise<DashboardGoal[
 
   return rows.map((r) => {
     const total = Number(r.totalWeight);
-    const mastered = Number(r.masteredWeight);
+    const earned = Number(r.earnedWeight);
     return {
       id: r.id,
       title: r.title,
       category: r.category,
       why: r.why,
       targetDate: r.targetDate,
-      progressPct: total === 0 ? 0 : Math.round((mastered / total) * 100),
+      progressPct: total === 0 ? 0 : Math.round((earned / total) * 100),
       masteredTopics: Number(r.masteredTopics),
+      practicingTopics: Number(r.practicingTopics),
       totalTopics: Number(r.totalTopics),
     };
   });
