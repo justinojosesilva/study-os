@@ -32,7 +32,11 @@ const components: Components = {
 
 export function LessonContent({ content }: { content: string }) {
   return (
-    <div className="prose prose-stone max-w-none dark:prose-invert prose-headings:font-medium prose-a:text-profissional prose-pre:rounded-lg prose-pre:border prose-pre:border-line prose-img:rounded-lg">
+    // O container segue a largura padrão das telas, mas o texto corrido tem
+    // medida própria: a 1024px a linha chegava a 107 caracteres, contra os
+    // 45–75 confortáveis. Só parágrafo e item de lista são limitados — tabela,
+    // código e diagrama continuam usando a largura toda, que é onde ela ajuda.
+    <div className="prose prose-stone max-w-none dark:prose-invert prose-headings:font-medium prose-p:max-w-[68ch] prose-li:max-w-[68ch] prose-a:text-profissional prose-pre:rounded-lg prose-pre:border prose-pre:border-line prose-img:rounded-lg">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}

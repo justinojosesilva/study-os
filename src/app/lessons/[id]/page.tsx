@@ -14,7 +14,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     if (!lesson) notFound();
 
     return (
-      <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12">
+      <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
         <Breadcrumbs
           items={[
             { label: "Dashboard", href: "/" },

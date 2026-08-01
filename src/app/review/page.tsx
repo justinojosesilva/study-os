@@ -15,7 +15,7 @@ export default async function ReviewPage() {
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-xl px-5 py-8 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Revisão" }]} />
 
       <h1 className="mb-6 text-xl font-medium">Revisão de hoje</h1>

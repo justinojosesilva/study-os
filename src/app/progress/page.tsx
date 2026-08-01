@@ -34,7 +34,7 @@ export default async function ProgressPage() {
   const g = await getGamification(ownerId);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Progresso" }]} />
 
       <header className="mb-8 flex items-center gap-4">
