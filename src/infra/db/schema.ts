@@ -29,9 +29,14 @@ export const goalStatus = pgEnum("goal_status", [
   "archived",
 ]);
 
+// Reading vs. doing. Kept as an enum because the app reasons about the two
+// differently; the filename convention ("aula-01", "lab-01") only looked like
+// data.
+export const lessonKind = pgEnum("lesson_kind", ["aula", "lab"]);
+
 // The path a topic walks: read it, practise it, then prove it. `praticando`
 // sits between studying and mastery because doing the exercises is real
-// progress — and `mastered` is now earned by passing the exam, not declared.
+// progress — and `mastered` is earned by passing, not declared.
 export const topicStatus = pgEnum("topic_status", [
   "todo",
   "learning",
@@ -275,6 +280,10 @@ export const exams = pgTable(
     goalId: uuid("goal_id")
       .notNull()
       .references(() => goals.id, { onDelete: "cascade" }),
+    // Set when this is a topic quiz rather than the goal's exam. Same table on
+    // purpose: identical shape, so grading, the runner and the attempt history
+    // are shared instead of forked into a parallel system.
+    topicId: uuid("topic_id").references(() => topics.id, { onDelete: "cascade" }),
     // null until submitted — an exam in progress has no score yet.
     scorePct: integer("score_pct"),
     feedback: text("feedback"),
@@ -328,6 +337,10 @@ export const lessons = pgTable(
       .notNull()
       .references(() => topics.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    // Reading material vs. hands-on lab. They are different work — finishing
+    // the reading is not finishing the practice — so progress counts them apart
+    // and the quiz can lean on the lab, which is where application shows up.
+    kind: lessonKind("kind").notNull().default("aula"),
     content: text("content").notNull(), // markdown
     // When the material was finished. A timestamp rather than a flag: it keeps
     // the "when" that a boolean throws away, and null reads naturally as "not
@@ -348,6 +361,35 @@ export const lessons = pgTable(
 // (like goals), NOT an event log. Optionally linked to the goal that studies
 // for it, so exam readiness = the goal's derived mastered-weight %.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// tutor_answers — what the tutor explained about a topic.
+//
+// Until now the tutor's reply lived only in the open dialog and was gone on
+// close. Keeping it turns a throwaway answer into study material the quiz can
+// draw on, and gives the topic a readable history of what was already asked.
+// ---------------------------------------------------------------------------
+
+export const tutorAnswers = pgTable(
+  "tutor_answers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    mode: text("mode").notNull(),
+    question: text("question"),
+    answer: text("answer").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tutor_answers_owner_idx").on(t.ownerId),
+    index("tutor_answers_topic_idx").on(t.topicId),
+  ],
+);
 
 export const certifications = pgTable(
   "certifications",
@@ -444,3 +486,6 @@ export type ExamQuestion = typeof examQuestions.$inferSelect;
 export type NewExamQuestion = typeof examQuestions.$inferInsert;
 export type ResumeProfile = typeof resumeProfiles.$inferSelect;
 export type NewResumeProfile = typeof resumeProfiles.$inferInsert;
+
+export type TutorAnswer = typeof tutorAnswers.$inferSelect;
+export type NewTutorAnswer = typeof tutorAnswers.$inferInsert;

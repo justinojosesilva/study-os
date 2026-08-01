@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Trash2, Lock, GraduationCap } from "lucide-react";
 import {
   setTopicStatusAction,
   setTopicPhaseAction,
   deleteTopicAction,
 } from "@/app/_actions/topics";
+import { generateQuizAction } from "@/app/_actions/exams";
 import { FlashcardsDialog } from "./FlashcardsDialog";
 import { TutorDialog } from "./TutorDialog";
 import { LessonsDialog } from "./LessonsDialog";
@@ -15,7 +17,7 @@ import type { Topic } from "@/infra/db/schema";
 
 type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status" | "phase">;
 type CardLite = { id: string; front: string; back: string };
-type LessonLite = { id: string; title: string; completedAt: Date | null };
+type LessonLite = { id: string; title: string; kind: "aula" | "lab"; completedAt: Date | null };
 
 const NEW_PHASE = "__nova__";
 
@@ -33,8 +35,19 @@ export function TopicCard({
   /** Phases already in use on this goal, offered as options. */
   phases?: string[];
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [quizzing, startQuiz] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  function makeQuiz() {
+    setError(null);
+    startQuiz(async () => {
+      const res = await generateQuizAction(topic.id);
+      if (res.ok) router.push(`/exams/${res.examId}`);
+      else setError(res.error);
+    });
+  }
   const [naming, setNaming] = useState(false);
   const [newPhase, setNewPhase] = useState("");
   const style = TOPIC_STATUS[topic.status];
@@ -179,6 +192,15 @@ export function TopicCard({
             goalId={goalId}
             cards={cards}
           />
+          <button
+            type="button"
+            onClick={makeQuiz}
+            disabled={quizzing}
+            aria-label={`Gerar questionário de ${topic.title}`}
+            className="tip p-1 text-faint transition-colors hover:text-ink disabled:opacity-50"
+          >
+            <GraduationCap size={15} />
+          </button>
           <button
             type="button"
             onClick={remove}

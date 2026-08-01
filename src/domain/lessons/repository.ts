@@ -6,6 +6,7 @@ export type LessonListItem = {
   id: string;
   topicId: string;
   title: string;
+  kind: "aula" | "lab";
   updatedAt: Date;
   completedAt: Date | null;
 };
@@ -20,6 +21,7 @@ export async function listLessonsForGoal(
       id: lessons.id,
       topicId: lessons.topicId,
       title: lessons.title,
+      kind: lessons.kind,
       updatedAt: lessons.updatedAt,
       completedAt: lessons.completedAt,
     })

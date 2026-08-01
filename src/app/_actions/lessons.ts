@@ -29,7 +29,8 @@ export async function createLessonAction(fd: FormData): Promise<ActionResult> {
     if (!(await ownsTopic(ownerId, topicId))) {
       return { ok: false, error: "Tópico não encontrado." };
     }
-    const row = await createLesson({ ownerId, topicId, ...parsed });
+    const kind = fd.get("kind") === "lab" ? "lab" : "aula";
+    const row = await createLesson({ ownerId, topicId, kind, ...parsed });
     if (goalId) revalidatePath(`/goals/${goalId}`);
     return { ok: true, id: row.id };
   });

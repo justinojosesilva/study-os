@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { BookOpen, X, Plus, Trash2, Upload, ExternalLink, Check } from "lucide-react";
+import { BookOpen, X, Plus, Trash2, Upload, ExternalLink, Check, FlaskConical } from "lucide-react";
 import {
   createLessonAction,
   deleteLessonAction,
@@ -10,7 +10,7 @@ import {
 } from "@/app/_actions/lessons";
 import { EmptyState } from "./EmptyState";
 
-type LessonLite = { id: string; title: string; completedAt: Date | null };
+type LessonLite = { id: string; title: string; kind: "aula" | "lab"; completedAt: Date | null };
 
 export function LessonsDialog({
   topicId,
@@ -26,12 +26,20 @@ export function LessonsDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [kind, setKind] = useState<"aula" | "lab">("aula");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [toggling, startToggle] = useTransition();
 
-  const done = lessons.filter((l) => l.completedAt).length;
+  // Reading and practising are different work, so they are counted apart —
+  // "1/2" alone never said whether what was missing was the lesson or the lab.
+  const stat = (k: "aula" | "lab") => {
+    const list = lessons.filter((l) => l.kind === k);
+    return { done: list.filter((l) => l.completedAt).length, total: list.length };
+  };
+  const aulas = stat("aula");
+  const labs = stat("lab");
 
   function toggleDone(id: string, next: boolean) {
     setError(null);
@@ -57,6 +65,7 @@ export function LessonsDialog({
     fd.set("goalId", goalId);
     fd.set("title", title);
     fd.set("content", content);
+    fd.set("kind", kind);
     startTransition(async () => {
       const res = await createLessonAction(fd);
       if (res.ok) {
@@ -80,11 +89,17 @@ export function LessonsDialog({
     <>
       <button
         onClick={() => dialogRef.current?.showModal()}
-        aria-label={`Aulas de ${topicTitle}: ${done} de ${lessons.length} concluídas`}
+        aria-label={`${topicTitle}: ${aulas.done} de ${aulas.total} aulas lidas, ${labs.done} de ${labs.total} labs praticados`}
         className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
       >
         <BookOpen size={14} />
-        {lessons.length > 0 ? `${done}/${lessons.length}` : 0}
+        {aulas.total > 0 ? `${aulas.done}/${aulas.total}` : 0}
+        {labs.total > 0 && (
+          <>
+            <FlaskConical size={14} className="ml-1" />
+            {labs.done}/{labs.total}
+          </>
+        )}
       </button>
 
       <dialog
@@ -136,7 +151,11 @@ export function LessonsDialog({
                     href={`/lessons/${l.id}`}
                     className="press flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-2"
                   >
-                    <BookOpen size={14} className="shrink-0 text-faint" />
+                    {l.kind === "lab" ? (
+                      <FlaskConical size={14} className="shrink-0 text-certificacao" />
+                    ) : (
+                      <BookOpen size={14} className="shrink-0 text-faint" />
+                    )}
                     <span className={`truncate font-medium ${l.completedAt ? "text-muted line-through decoration-line" : ""}`}>
                       {l.title}
                     </span>
@@ -164,6 +183,15 @@ export function LessonsDialog({
               placeholder="Título da aula"
               className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
             />
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as "aula" | "lab")}
+              aria-label="Tipo do material"
+              className="shrink-0 rounded-lg border border-line bg-surface px-2 py-2 text-sm"
+            >
+              <option value="aula">Aula</option>
+              <option value="lab">Lab</option>
+            </select>
             <label className="press inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:bg-surface-2">
               <Upload size={14} /> .md
               <input type="file" accept=".md,.mdx,text/markdown" onChange={onFile} className="hidden" />

@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
 import { getGoalWithTopics } from "@/domain/goals/repository";
 import { generateExam } from "@/domain/ai/examGen";
+import { generateQuiz } from "@/domain/ai/quizGen";
 import {
   createExam,
+  getQuizMaterial,
   submitExam,
   deleteExam,
   type GradedResult,
@@ -75,4 +77,50 @@ export async function deleteExamAction(examId: string, goalId: string) {
     if (ok) revalidatePath(`/goals/${goalId}`);
     return { ok };
   });
+}
+
+const QUIZ_QUESTION_COUNT = 8;
+
+/**
+ * Builds a quiz for one topic from its own material. Follows the project's AI
+ * pattern: read context in a scoped transaction, call the model outside it,
+ * write back scoped.
+ */
+export async function generateQuizAction(topicId: string): Promise<GenerateExamResult> {
+  const material = await scoped((ownerId) => getQuizMaterial(ownerId, topicId));
+  if (!material) return { ok: false, error: "Tópico não encontrado." };
+
+  const res = await generateQuiz(
+    {
+      topicTitle: material.topicTitle,
+      goalTitle: material.goalTitle,
+      lessons: material.lessons,
+      flashcards: material.flashcards,
+      tutorAnswers: material.tutorAnswers,
+    },
+    QUIZ_QUESTION_COUNT,
+  );
+  if (!res.ok) return { ok: false, error: res.error };
+
+  // Every question belongs to this topic, so grading can promote it directly.
+  const questions: NewQuestionInput[] = res.data.questions
+    .filter((q) => q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length)
+    .map((q) => ({
+      topicId,
+      topicTitle: material.topicTitle,
+      prompt: q.prompt,
+      options: q.options,
+      correctIndex: q.correctIndex,
+      explanation: q.explanation,
+    }));
+
+  if (questions.length === 0) {
+    return { ok: false, error: "A IA não retornou questões válidas. Tente novamente." };
+  }
+
+  const exam = await scoped((ownerId) =>
+    createExam(ownerId, material.goalId, questions, topicId),
+  );
+  revalidatePath(`/goals/${material.goalId}`);
+  return { ok: true, examId: exam.id, mocked: res.mocked };
 }

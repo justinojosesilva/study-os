@@ -1,6 +1,15 @@
 import { db } from "@/infra/db/client";
-import { exams, examQuestions, topics, goals, flashcards } from "@/infra/db/schema";
-import { and, eq, asc, desc, isNotNull, inArray, sql } from "drizzle-orm";
+import { PASS_PCT } from "@/lib/progress";
+import {
+  exams,
+  examQuestions,
+  topics,
+  goals,
+  flashcards,
+  lessons,
+  tutorAnswers,
+} from "@/infra/db/schema";
+import { and, eq, asc, desc, isNotNull, isNull, inArray, sql } from "drizzle-orm";
 
 export type NewQuestionInput = {
   topicId: string | null;
@@ -16,11 +25,13 @@ export async function createExam(
   ownerId: string,
   goalId: string,
   questions: NewQuestionInput[],
+  /** Set for a topic quiz; left out for the goal's exam. */
+  topicId?: string,
 ) {
   return db.transaction(async (tx) => {
     const [exam] = await tx
       .insert(exams)
-      .values({ ownerId, goalId })
+      .values({ ownerId, goalId, topicId: topicId ?? null })
       .returning({ id: exams.id });
 
     await tx.insert(examQuestions).values(
@@ -44,6 +55,8 @@ export async function createExam(
 export type ExamWithQuestions = {
   id: string;
   goalId: string;
+  /** Set when this is a topic quiz rather than the goal's exam. */
+  topicId: string | null;
   goalTitle: string;
   scorePct: number | null;
   completedAt: Date | null;
@@ -67,6 +80,7 @@ export async function getExam(
     .select({
       id: exams.id,
       goalId: exams.goalId,
+      topicId: exams.topicId,
       scorePct: exams.scorePct,
       completedAt: exams.completedAt,
     })
@@ -117,6 +131,9 @@ export async function listExamsForGoal(ownerId: string, goalId: string) {
       and(
         eq(exams.ownerId, ownerId),
         eq(exams.goalId, goalId),
+        // Topic quizzes live in this table too; the goal's history is only the
+        // goal-wide exams, or the two sets would read as one.
+        isNull(exams.topicId),
         isNotNull(exams.completedAt),
       ),
     )
@@ -161,8 +178,9 @@ export async function submitExam(
 
     let correct = 0;
     const missedByTopic = new Map<string, typeof rows>();
-    // Topics this exam actually asked about — only those can move either way.
-    const testedTopics = new Set<string>();
+    // Per-topic tally: the decision to promote or demote is taken on the topic's
+    // own score, not on the attempt's overall score.
+    const tally = new Map<string, { right: number; total: number }>();
 
     for (const q of rows) {
       const chosen = answers[q.id] ?? null;
@@ -171,14 +189,20 @@ export async function submitExam(
         .set({ chosenIndex: chosen })
         .where(eq(examQuestions.id, q.id));
 
-      if (q.topicId) testedTopics.add(q.topicId);
+      const hit = chosen === q.correctIndex;
+      if (hit) correct += 1;
 
-      if (chosen === q.correctIndex) {
-        correct += 1;
-      } else if (q.topicId) {
-        const list = missedByTopic.get(q.topicId) ?? [];
-        list.push(q);
-        missedByTopic.set(q.topicId, list);
+      if (q.topicId) {
+        const t = tally.get(q.topicId) ?? { right: 0, total: 0 };
+        t.total += 1;
+        if (hit) t.right += 1;
+        tally.set(q.topicId, t);
+
+        if (!hit) {
+          const list = missedByTopic.get(q.topicId) ?? [];
+          list.push(q);
+          missedByTopic.set(q.topicId, list);
+        }
       }
     }
 
@@ -188,11 +212,26 @@ export async function submitExam(
       .set({ scorePct, feedback, completedAt: new Date() })
       .where(eq(exams.id, examId));
 
-    // Consequence 1: a miss costs the topic one step. Mastery drops back to
-    // practice rather than all the way to studying — getting a question wrong
-    // means the practice wasn't finished, not that the reading was wasted.
+    // Consequence 1: falling below the pass mark costs the topic one step.
+    // Mastery drops back to practice rather than all the way to studying — a
+    // weak result means the practice wasn't finished, not that the reading was
+    // wasted. A topic that passed is never demoted, even with a miss or two.
     const demotedTopics: string[] = [];
     for (const [topicId, missed] of missedByTopic) {
+      const t = tally.get(topicId)!;
+      const passed = Math.round((t.right / t.total) * 100) >= PASS_PCT;
+      if (passed) {
+        // Still worth a card: the gap is real even when the topic held up.
+        await tx.insert(flashcards).values(
+          missed.map((q) => ({
+            ownerId,
+            topicId,
+            front: q.prompt,
+            back: `${q.options[q.correctIndex]}\n\n${q.explanation}`,
+          })),
+        );
+        continue;
+      }
       const [demoted] = await tx
         .update(topics)
         .set({
@@ -223,12 +262,13 @@ export async function submitExam(
       );
     }
 
-    // Consequence 3: the exam is the only way into `mastered`. A topic that was
-    // being practised and answered everything correctly here has earned it —
-    // mastery becomes evidence rather than a self-assessment.
+    // Consequence 3: an exam or quiz is the only way into `mastered`. A topic
+    // being practised that reached the pass mark has earned it — mastery is
+    // evidence rather than a self-assessment. The topic quiz reaches this by the
+    // same rule, so it doesn't need to wait for the goal's exam.
     const masteredTopics: string[] = [];
-    for (const topicId of testedTopics) {
-      if (missedByTopic.has(topicId)) continue;
+    for (const [topicId, t] of tally) {
+      if (Math.round((t.right / t.total) * 100) < PASS_PCT) continue;
       const [promoted] = await tx
         .update(topics)
         .set({ status: "mastered" })
@@ -261,4 +301,59 @@ export async function deleteExam(ownerId: string, examId: string) {
     .where(and(eq(exams.ownerId, ownerId), eq(exams.id, examId)))
     .returning({ id: exams.id });
   return Boolean(row);
+}
+
+/** Completed quiz attempts for one topic, newest first. */
+export async function listQuizzesForTopic(ownerId: string, topicId: string) {
+  return db
+    .select({
+      id: exams.id,
+      scorePct: exams.scorePct,
+      createdAt: exams.createdAt,
+      completedAt: exams.completedAt,
+    })
+    .from(exams)
+    .where(
+      and(
+        eq(exams.ownerId, ownerId),
+        eq(exams.topicId, topicId),
+        isNotNull(exams.completedAt),
+      ),
+    )
+    .orderBy(desc(exams.createdAt));
+}
+
+/** Everything a topic quiz can be built from, in one place. */
+export async function getQuizMaterial(ownerId: string, topicId: string) {
+  const [topic] = await db
+    .select({
+      topicTitle: topics.title,
+      goalId: topics.goalId,
+      goalTitle: goals.title,
+      status: topics.status,
+    })
+    .from(topics)
+    .innerJoin(goals, eq(topics.goalId, goals.id))
+    .where(and(eq(topics.ownerId, ownerId), eq(topics.id, topicId)))
+    .limit(1);
+  if (!topic) return null;
+
+  const [lessonRows, cardRows, tutorRows] = await Promise.all([
+    db
+      .select({ title: lessons.title, kind: lessons.kind, content: lessons.content })
+      .from(lessons)
+      .where(and(eq(lessons.ownerId, ownerId), eq(lessons.topicId, topicId))),
+    db
+      .select({ front: flashcards.front, back: flashcards.back })
+      .from(flashcards)
+      .where(and(eq(flashcards.ownerId, ownerId), eq(flashcards.topicId, topicId))),
+    db
+      .select({ question: tutorAnswers.question, answer: tutorAnswers.answer })
+      .from(tutorAnswers)
+      .where(and(eq(tutorAnswers.ownerId, ownerId), eq(tutorAnswers.topicId, topicId)))
+      .orderBy(desc(tutorAnswers.createdAt))
+      .limit(10),
+  ]);
+
+  return { ...topic, lessons: lessonRows, flashcards: cardRows, tutorAnswers: tutorRows };
 }

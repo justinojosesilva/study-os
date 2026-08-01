@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId, scoped } from "@/domain/auth";
+import { saveTutorAnswer } from "@/domain/tutor/repository";
 import { proposePhases } from "@/domain/ai/topicPhases";
 import { applyPhases } from "@/domain/topics/repository";
 import { analyzeGoalGaps, type AnalysisResult } from "@/domain/ai/gapAnalysis";
@@ -53,12 +54,35 @@ export async function askTutorAction(
 ): Promise<TutorResult> {
   const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
   if (!ctx) return { ok: false, error: "Tópico não encontrado." };
-  return askTutor({
+
+  // Read context in a short scoped transaction, call the AI outside it, then
+  // write back — the model call is slow and must not hold a DB transaction.
+  const res = await askTutor({
     topicTitle: ctx.topicTitle,
     goalTitle: ctx.goalTitle,
     mode,
     question,
   });
+
+  if (res.ok) {
+    // Kept as study material for the topic quiz. A failure to store must not
+    // cost the user the answer they already have on screen.
+    try {
+      await scoped((ownerId) =>
+        saveTutorAnswer({
+          ownerId,
+          topicId,
+          mode,
+          question: question?.trim() || null,
+          answer: res.text,
+        }),
+      );
+    } catch (err) {
+      console.error("tutor-save error", err);
+    }
+  }
+
+  return res;
 }
 
 export type AdoptResult = { ok: true; goalId: string } | { ok: false; error: string };
