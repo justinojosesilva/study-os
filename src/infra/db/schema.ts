@@ -329,6 +329,10 @@ export const lessons = pgTable(
       .references(() => topics.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     content: text("content").notNull(), // markdown
+    // When the material was finished. A timestamp rather than a flag: it keeps
+    // the "when" that a boolean throws away, and null reads naturally as "not
+    // done yet" without a default to maintain.
+    completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

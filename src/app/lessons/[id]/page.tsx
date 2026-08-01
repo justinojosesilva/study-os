@@ -4,6 +4,7 @@ import { getLessonForReading } from "@/domain/lessons/repository";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { LessonContent } from "@/app/_components/LessonContent";
 import { FloatingSessionLogger } from "@/app/_components/FloatingSessionLogger";
+import { LessonDoneButton } from "@/app/_components/LessonDoneButton";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,12 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         </p>
         <h1 className="mb-8 text-2xl font-medium tracking-tight">{lesson.title}</h1>
         <LessonContent content={lesson.content} />
+
+        <LessonDoneButton
+          lessonId={lesson.id}
+          goalId={lesson.goalId}
+          completedAt={lesson.completedAt}
+        />
 
         <FloatingSessionLogger topicId={lesson.topicId} topicTitle={lesson.topicTitle} />
       </main>

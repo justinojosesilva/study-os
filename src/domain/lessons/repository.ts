@@ -7,6 +7,7 @@ export type LessonListItem = {
   topicId: string;
   title: string;
   updatedAt: Date;
+  completedAt: Date | null;
 };
 
 /** Lightweight list (no content) for a goal's topics — grouped in the UI. */
@@ -20,6 +21,7 @@ export async function listLessonsForGoal(
       topicId: lessons.topicId,
       title: lessons.title,
       updatedAt: lessons.updatedAt,
+      completedAt: lessons.completedAt,
     })
     .from(lessons)
     .innerJoin(topics, eq(lessons.topicId, topics.id))
@@ -35,6 +37,7 @@ export type LessonRead = {
   topicTitle: string;
   goalId: string;
   goalTitle: string;
+  completedAt: Date | null;
 };
 
 /** Full lesson + its topic/goal context, for the reading page. */
@@ -51,6 +54,7 @@ export async function getLessonForReading(
       topicTitle: topics.title,
       goalId: goals.id,
       goalTitle: goals.title,
+      completedAt: lessons.completedAt,
     })
     .from(lessons)
     .innerJoin(topics, eq(lessons.topicId, topics.id))
@@ -84,4 +88,22 @@ export async function deleteLesson(ownerId: string, lessonId: string) {
     .where(and(eq(lessons.ownerId, ownerId), eq(lessons.id, lessonId)))
     .returning({ id: lessons.id });
   return Boolean(row);
+}
+
+/**
+ * Marks a lesson finished, or clears it. Toggling rather than setting a flag
+ * once: material gets revisited, and being able to reopen it matters as much as
+ * closing it.
+ */
+export async function setLessonCompleted(
+  ownerId: string,
+  lessonId: string,
+  done: boolean,
+): Promise<string | null> {
+  const [row] = await db
+    .update(lessons)
+    .set({ completedAt: done ? new Date() : null })
+    .where(and(eq(lessons.ownerId, ownerId), eq(lessons.id, lessonId)))
+    .returning({ topicId: lessons.topicId });
+  return row?.topicId ?? null;
 }

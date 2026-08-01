@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
-import { createLesson, updateLesson, deleteLesson } from "@/domain/lessons/repository";
+import {
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  setLessonCompleted,
+} from "@/domain/lessons/repository";
 import { ownsTopic } from "@/domain/sessions/repository";
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
@@ -54,6 +59,20 @@ export async function deleteLessonAction(
     const ok = await deleteLesson(ownerId, lessonId);
     if (!ok) return { ok: false, error: "Aula não encontrada." };
     if (goalId) revalidatePath(`/goals/${goalId}`);
+    return { ok: true };
+  });
+}
+
+export async function setLessonCompletedAction(
+  lessonId: string,
+  goalId: string,
+  done: boolean,
+): Promise<ActionResult> {
+  return scoped(async (ownerId) => {
+    const topicId = await setLessonCompleted(ownerId, lessonId, done);
+    if (!topicId) return { ok: false, error: "Aula não encontrada." };
+    if (goalId) revalidatePath(`/goals/${goalId}`);
+    revalidatePath(`/lessons/${lessonId}`);
     return { ok: true };
   });
 }

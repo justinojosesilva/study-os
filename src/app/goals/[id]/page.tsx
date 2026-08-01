@@ -50,10 +50,10 @@ export default async function GoalDetailPage({
     list.push({ id: c.id, front: c.front, back: c.back });
     cardsByTopic.set(c.topicId, list);
   }
-  const lessonsByTopic = new Map<string, { id: string; title: string }[]>();
+  const lessonsByTopic = new Map<string, { id: string; title: string; completedAt: Date | null }[]>();
   for (const l of allLessons) {
     const list = lessonsByTopic.get(l.topicId) ?? [];
-    list.push({ id: l.id, title: l.title });
+    list.push({ id: l.id, title: l.title, completedAt: l.completedAt });
     lessonsByTopic.set(l.topicId, list);
   }
 

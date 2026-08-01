@@ -2,11 +2,15 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { BookOpen, X, Plus, Trash2, Upload, ExternalLink } from "lucide-react";
-import { createLessonAction, deleteLessonAction } from "@/app/_actions/lessons";
+import { BookOpen, X, Plus, Trash2, Upload, ExternalLink, Check } from "lucide-react";
+import {
+  createLessonAction,
+  deleteLessonAction,
+  setLessonCompletedAction,
+} from "@/app/_actions/lessons";
 import { EmptyState } from "./EmptyState";
 
-type LessonLite = { id: string; title: string };
+type LessonLite = { id: string; title: string; completedAt: Date | null };
 
 export function LessonsDialog({
   topicId,
@@ -25,6 +29,17 @@ export function LessonsDialog({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [deleting, startDelete] = useTransition();
+  const [toggling, startToggle] = useTransition();
+
+  const done = lessons.filter((l) => l.completedAt).length;
+
+  function toggleDone(id: string, next: boolean) {
+    setError(null);
+    startToggle(async () => {
+      const res = await setLessonCompletedAction(id, goalId, next);
+      if (!res.ok) setError(res.error);
+    });
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -65,10 +80,11 @@ export function LessonsDialog({
     <>
       <button
         onClick={() => dialogRef.current?.showModal()}
-        aria-label={`Aulas de ${topicTitle}: ${lessons.length}`}
+        aria-label={`Aulas de ${topicTitle}: ${done} de ${lessons.length} concluídas`}
         className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
       >
-        <BookOpen size={14} /> {lessons.length}
+        <BookOpen size={14} />
+        {lessons.length > 0 ? `${done}/${lessons.length}` : 0}
       </button>
 
       <dialog
@@ -102,12 +118,28 @@ export function LessonsDialog({
             <ul className="flex flex-col gap-1.5">
               {lessons.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleDone(l.id, !l.completedAt)}
+                    disabled={toggling}
+                    aria-pressed={!!l.completedAt}
+                    aria-label={`${l.completedAt ? "Desmarcar" : "Marcar"} ${l.title} como concluída`}
+                    className={`tip flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                      l.completedAt
+                        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-500"
+                        : "border-line text-transparent hover:border-muted hover:text-faint"
+                    }`}
+                  >
+                    <Check size={13} />
+                  </button>
                   <Link
                     href={`/lessons/${l.id}`}
                     className="press flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:bg-surface-2"
                   >
                     <BookOpen size={14} className="shrink-0 text-faint" />
-                    <span className="truncate font-medium">{l.title}</span>
+                    <span className={`truncate font-medium ${l.completedAt ? "text-muted line-through decoration-line" : ""}`}>
+                      {l.title}
+                    </span>
                     <ExternalLink size={12} className="ml-auto shrink-0 text-faint" />
                   </Link>
                   <button

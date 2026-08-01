@@ -9,7 +9,7 @@ import type { Topic } from "@/infra/db/schema";
 
 type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status" | "phase">;
 type CardLite = { id: string; front: string; back: string };
-type LessonLite = { id: string; title: string };
+type LessonLite = { id: string; title: string; completedAt: Date | null };
 
 /**
  * Topic list grouped by learning phase.
