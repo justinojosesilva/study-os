@@ -87,10 +87,14 @@ export function SessionLogger({
       <dialog
         ref={dialogRef}
         aria-label="Iniciar sessão de estudo"
-        className="m-auto w-[min(92vw,460px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
+        className="m-auto max-h-[92vh] w-[min(92vw,460px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >
-        <form onSubmit={onSubmit} className="flex flex-col">
-          <header className="flex items-center justify-between border-b border-line px-5 py-4">
+        {/* Só o miolo rola: com a caixa de anotações maior, o formulário passa
+            da altura de uma tela de notebook, e num diálogo que rola inteiro o
+            "Salvar sessão" fica abaixo da dobra. Cabeçalho e rodapé fixos
+            mantêm o botão sempre visível. */}
+        <form onSubmit={onSubmit} className="flex max-h-[92vh] flex-col">
+          <header className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
             <span className="font-medium">Registrar sessão</span>
             <button
               type="button"
@@ -102,7 +106,7 @@ export function SessionLogger({
             </button>
           </header>
 
-          <div className="flex flex-col gap-5 px-5 py-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
             <div
               className={`rounded-xl px-5 py-6 text-center transition-colors ${
                 resting ? "bg-faculdade-soft" : "bg-surface-2"
@@ -239,18 +243,22 @@ export function SessionLogger({
             </div>
 
             <Field label="Anotações">
+              {/* Era rows={2} + resize-none, e as anotações reais passam de
+                  2.000 caracteres com tabelas e código. Agora abre com espaço
+                  útil e o usuário pode esticar. Markdown é renderizado depois,
+                  na agenda e no calendário. */}
               <textarea
                 name="notes"
-                rows={2}
-                placeholder="O que você estudou?"
-                className="w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+                rows={8}
+                placeholder="O que você estudou? Markdown funciona — títulos, listas, tabelas e código."
+                className="min-h-32 w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-sm"
               />
             </Field>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
 
-          <footer className="flex items-center justify-end gap-2 border-t border-line px-5 py-4">
+          <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-4">
             <button
               type="button"
               onClick={close}

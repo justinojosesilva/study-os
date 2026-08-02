@@ -9,6 +9,7 @@ import { toDateKey, addDays, startOfToday, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { AvailabilitySettings } from "@/app/_components/AvailabilitySettings";
 import { SessionLogger } from "@/app/_components/SessionLogger";
+import { SessionNote } from "@/app/_components/SessionNote";
 import { WeekStrategy } from "@/app/_components/WeekStrategy";
 import { EmptyState } from "@/app/_components/EmptyState";
 import {
@@ -185,9 +186,7 @@ function RecentHistory({ sessions }: { sessions: MonthSession[] }) {
                         <span className="font-medium text-ink">{fmtMin(s.durationMin)}</span>
                       </span>
                     </div>
-                    {s.notes && (
-                      <p className="mt-1 border-l-2 border-line pl-2 text-xs text-muted">{s.notes}</p>
-                    )}
+                    {s.notes && <SessionNote content={s.notes} />}
                   </li>
                 ))}
               </ul>

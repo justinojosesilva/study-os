@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, X, Check } from "lucide-react";
 import { SessionLogger } from "./SessionLogger";
+import { SessionNote } from "./SessionNote";
 import { formatTime } from "@/lib/date";
 import type { PickerTopic } from "@/domain/topics/repository";
 
@@ -222,11 +223,7 @@ export function MonthCalendar({
                         <p className="mt-0.5 text-xs text-faint tabular-nums">
                           {formatTime(s.startedAt)}
                         </p>
-                        {s.notes && (
-                          <p className="mt-1.5 border-l-2 border-line pl-2 text-xs text-muted">
-                            {s.notes}
-                          </p>
-                        )}
+                        {s.notes && <SessionNote content={s.notes} />}
                       </li>
                     ))}
                   </ul>

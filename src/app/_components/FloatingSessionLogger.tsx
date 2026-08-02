@@ -169,11 +169,13 @@ export function FloatingSessionLogger({
             </label>
           </div>
 
+          {/* Menor que o do diálogo — este flutua sobre a aula sendo lida e não
+              pode cobrir a leitura — mas redimensionável, que era o que faltava. */}
           <textarea
             name="notes"
-            rows={2}
-            placeholder="Anotações desta sessão…"
-            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-2 py-1.5 text-sm"
+            rows={5}
+            placeholder="Anotações desta sessão… (markdown funciona)"
+            className="mt-2 max-h-72 w-full resize-y rounded-lg border border-line bg-surface px-2 py-1.5 text-sm"
           />
 
           {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
