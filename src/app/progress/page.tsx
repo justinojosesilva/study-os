@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getGamification } from "@/domain/gamification";
+import {
+  goalPerformance,
+  phasePerformance,
+  retentionTrend,
+  calibration,
+} from "@/domain/performance";
+import { PerformancePanel } from "@/app/_components/PerformancePanel";
+import Link from "next/link";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 
 export const dynamic = "force-dynamic";
@@ -29,14 +37,45 @@ const ICONS: Record<string, LucideIcon> = {
   cards_20: Layers,
 };
 
-export default async function ProgressPage() {
+export default async function ProgressPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aba?: string }>;
+}) {
+  // The tab lives in the URL rather than in client state so a view can be
+  // linked to and survives a reload.
+  const { aba } = await searchParams;
+  const showGame = aba === "xp";
+
   return scoped(async (ownerId) => {
-  const g = await getGamification(ownerId);
+  const [g, goals, phases, retention, calibrations] = await Promise.all([
+    getGamification(ownerId),
+    showGame ? Promise.resolve([]) : goalPerformance(ownerId),
+    showGame ? Promise.resolve([]) : phasePerformance(ownerId),
+    showGame ? Promise.resolve([]) : retentionTrend(ownerId),
+    showGame ? Promise.resolve([]) : calibration(ownerId),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Progresso" }]} />
 
+      <nav className="mb-6 flex gap-1 border-b border-line">
+        <Tab href="/progress" active={!showGame} label="Desempenho" />
+        <Tab href="/progress?aba=xp" active={showGame} label="XP e conquistas" />
+      </nav>
+
+      {!showGame && (
+        <PerformancePanel
+          goals={goals}
+          phases={phases}
+          retention={retention}
+          calibrations={calibrations}
+        />
+      )}
+
+      {showGame && (
+      <>
       <header className="mb-8 flex items-center gap-4">
         <span className="flex size-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-certificacao-soft text-certificacao">
           <span className="text-[11px] uppercase leading-none">nível</span>
@@ -94,9 +133,27 @@ export default async function ProgressPage() {
           })}
         </ul>
       </section>
+      </>
+      )}
     </main>
   );
   });
+}
+
+function Tab({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+        active
+          ? "border-ink text-ink"
+          : "border-transparent text-muted hover:text-ink"
+      }`}
+    >
+      {label}
+    </Link>
+  );
 }
 
 function XpStat({ label, value, hint }: { label: string; value: number; hint: string }) {

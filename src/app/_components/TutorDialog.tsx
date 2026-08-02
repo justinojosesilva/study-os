@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { GraduationCap, X, Send } from "lucide-react";
+import { Lightbulb, X, Send } from "lucide-react";
 import { askTutorAction } from "@/app/_actions/ai";
 import type { TutorMode } from "@/domain/ai/tutor";
 import { SkeletonBlock, SkeletonText } from "./Skeleton";
@@ -47,7 +47,7 @@ export function TutorDialog({
         aria-label="Tutor"
         className="text-faint transition-colors hover:text-ink"
       >
-        <GraduationCap size={16} />
+        <Lightbulb size={16} />
       </button>
 
       <dialog
@@ -57,7 +57,7 @@ export function TutorDialog({
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-4">
           <span className="flex items-center gap-2 font-medium">
-            <GraduationCap size={17} className="text-certificacao" />
+            <Lightbulb size={17} className="text-certificacao" />
             Tutor · <span className="text-muted">{topicTitle}</span>
           </span>
           <button
