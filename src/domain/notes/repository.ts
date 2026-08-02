@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/client";
 import { notes, topics, goals, studySessions, type NewNote } from "@/infra/db/schema";
-import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, isNotNull } from "drizzle-orm";
 
 /**
  * Notes are what the user produced while studying — markdown documents about a
@@ -284,6 +284,35 @@ export async function listNotesForTopicWithContent(
     .where(and(eq(notes.ownerId, ownerId), eq(notes.topicId, topicId)))
     .orderBy(desc(notes.updatedAt))
     .limit(limit);
+}
+
+export type NextStep = { noteId: string; text: string };
+
+/**
+ * Where to pick up, per topic — the most recently updated note that actually
+ * has a `next_step`.
+ *
+ * Filtered on the column rather than taking the newest note and reading its
+ * field: a newer note without a next step must not erase a still-valid one
+ * written earlier.
+ */
+export async function nextStepsByTopic(ownerId: string): Promise<Map<string, NextStep>> {
+  const rows = await db
+    .select({ noteId: notes.id, topicId: notes.topicId, text: notes.nextStep })
+    .from(notes)
+    .where(
+      and(eq(notes.ownerId, ownerId), isNotNull(notes.topicId), isNotNull(notes.nextStep)),
+    )
+    .orderBy(desc(notes.updatedAt));
+
+  const out = new Map<string, NextStep>();
+  for (const r of rows) {
+    // Rows arrive newest first, so the first one seen for a topic wins.
+    if (r.topicId && r.text && !out.has(r.topicId)) {
+      out.set(r.topicId, { noteId: r.noteId, text: r.text });
+    }
+  }
+  return out;
 }
 
 export async function createNote(input: NewNote) {

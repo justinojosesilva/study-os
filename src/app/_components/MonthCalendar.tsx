@@ -5,6 +5,8 @@ import Link from "next/link";
 import { RefreshCw, X, Check } from "lucide-react";
 import { SessionLogger } from "./SessionLogger";
 import { SessionNote } from "./SessionNote";
+import { NextStepHint } from "./NextStepHint";
+import type { NextStep } from "@/domain/notes/repository";
 import { formatTime } from "@/lib/date";
 import type { PickerTopic } from "@/domain/topics/repository";
 
@@ -58,12 +60,14 @@ export function MonthCalendar({
   planByDate,
   pastByDate,
   topics,
+  nextSteps,
 }: {
   monthLabel: string;
   cells: DayCell[];
   planByDate: Record<string, CalBlock[]>;
   pastByDate: Record<string, PastSession[]>;
   topics: PickerTopic[];
+  nextSteps: Map<string, NextStep>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -184,6 +188,7 @@ export function MonthCalendar({
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{b.label}</p>
                           {b.goalTitle && <p className="truncate text-xs text-muted">{b.goalTitle}</p>}
+                          {b.topicId && <NextStepHint step={nextSteps.get(b.topicId)} />}
                         </div>
                         <SessionLogger
                           topics={topics}

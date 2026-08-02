@@ -5,12 +5,17 @@ import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { getAvailability } from "@/domain/user/repository";
 import { listTopicsForPicker, type PickerTopic } from "@/domain/topics/repository";
 import { listSessionsBetween } from "@/domain/sessions/repository";
-import { listNotesBySessions } from "@/domain/notes/repository";
+import {
+  listNotesBySessions,
+  nextStepsByTopic,
+  type NextStep,
+} from "@/domain/notes/repository";
 import { toDateKey, addDays, startOfToday, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { AvailabilitySettings } from "@/app/_components/AvailabilitySettings";
 import { SessionLogger } from "@/app/_components/SessionLogger";
 import { SessionNote } from "@/app/_components/SessionNote";
+import { NextStepHint } from "@/app/_components/NextStepHint";
 import { WeekStrategy } from "@/app/_components/WeekStrategy";
 import { EmptyState } from "@/app/_components/EmptyState";
 import {
@@ -39,11 +44,12 @@ export default async function AgendaPage() {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
-    const [plan, availability, topics, monthSessions] = await Promise.all([
+    const [plan, availability, topics, monthSessions, nextSteps] = await Promise.all([
       getWeekPlan(ownerId),
       getAvailability(ownerId),
       listTopicsForPicker(ownerId),
       listSessionsBetween(ownerId, monthStart, monthEnd),
+      nextStepsByTopic(ownerId),
     ]);
 
     // Notes now live in their own table; the session only points at the moment
@@ -135,6 +141,7 @@ export default async function AgendaPage() {
                 planByDate={planByDate}
                 pastByDate={pastByDate}
                 topics={topics}
+                nextSteps={nextSteps}
               />
             </div>
 
@@ -143,7 +150,12 @@ export default async function AgendaPage() {
                 on desktop it lives inside each day of the calendar. */}
             <div className="flex flex-col gap-3 lg:hidden">
               {plan.days.map((day) => (
-                <DayCard key={day.date.toISOString()} day={day} topics={topics} />
+                <DayCard
+                  key={day.date.toISOString()}
+                  day={day}
+                  topics={topics}
+                  nextSteps={nextSteps}
+                />
               ))}
               {hasPast && (
                 <RecentHistory sessions={monthSessions} noteBySession={noteBySession} />
@@ -227,7 +239,15 @@ function dayLabelFromKey(key: string): string {
   return `${WEEKDAY[date.getDay()]} · ${d}/${MONTHS_SHORT[m - 1]}`;
 }
 
-function DayCard({ day, topics }: { day: PlanDay; topics: PickerTopic[] }) {
+function DayCard({
+  day,
+  topics,
+  nextSteps,
+}: {
+  day: PlanDay;
+  topics: PickerTopic[];
+  nextSteps: Map<string, NextStep>;
+}) {
   const label = `${WEEKDAY[day.date.getDay()]} · ${day.date.getDate()}/${MONTHS_SHORT[day.date.getMonth()]}`;
   const fillPct = day.availableMin > 0 ? Math.round((day.plannedMin / day.availableMin) * 100) : 0;
 
@@ -289,6 +309,7 @@ function DayCard({ day, topics }: { day: PlanDay; topics: PickerTopic[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{block.label}</p>
                   {block.goalTitle && <p className="truncate text-xs text-muted">{block.goalTitle}</p>}
+                  {block.topicId && <NextStepHint step={nextSteps.get(block.topicId)} />}
                 </div>
                 <SessionLogger
                   topics={topics}
