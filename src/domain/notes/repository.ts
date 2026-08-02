@@ -138,6 +138,136 @@ export async function listNotesBySessions(
   return out;
 }
 
+export type NoteSearchHit = {
+  id: string;
+  title: string;
+  topicTitle: string | null;
+  goalTitle: string | null;
+  updatedAt: Date;
+  /**
+   * The matching excerpt, already split into plain runs and matched runs, so
+   * the page never has to inject HTML to show the highlight.
+   */
+  snippet: { text: string; hit: boolean }[];
+};
+
+// Postgres wraps matches in these; anything else would collide with real text.
+const SEL_START = "␟";
+const SEL_STOP = "␞";
+
+/**
+ * The excerpt comes out of the raw markdown, so a hit inside a table showed up
+ * as `| --- | **injeção** |`. Stripped here rather than at index time: the
+ * body must stay exactly as written, and the search still has to match the
+ * word inside `**bold**`.
+ *
+ * Applied per run, after the split — the markers are single characters that no
+ * rule below can touch.
+ */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/\|?\s*:?-{2,}:?\s*(?=\||$)/gm, "") // table rule rows
+    .replace(/[*_`>]/g, "")
+    .replace(/\|/g, " ")
+    .replace(/[ \t]{2,}/g, " ");
+}
+
+function splitHeadline(raw: string): { text: string; hit: boolean }[] {
+  return raw
+    .split(new RegExp(`(${SEL_START}[^${SEL_STOP}]*${SEL_STOP})`, "g"))
+    .map((part) =>
+      part.startsWith(SEL_START)
+        ? { text: stripMarkdown(part.slice(1, -1)), hit: true }
+        : { text: stripMarkdown(part), hit: false },
+    )
+    .filter((part) => part.text.length > 0);
+}
+
+/**
+ * Full-text search over the user's notes.
+ *
+ * `websearch_to_tsquery` rather than `plainto_tsquery` so quoted phrases and
+ * `or` work the way they do in a search box. `pt_unaccent` throughout — the
+ * index expression uses the same name, and any other config would silently
+ * fall back to a sequential scan.
+ *
+ * What this buys, measured rather than assumed: accent-insensitive typing and
+ * regular inflection. It does NOT make "injeções" find "injeção" — the
+ * Portuguese stemmer keeps those apart.
+ */
+export async function searchNotes(
+  ownerId: string,
+  query: string,
+  limit = 40,
+): Promise<NoteSearchHit[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const vector = sql`to_tsvector('pt_unaccent', ${notes.title} || ' ' || ${notes.content})`;
+  const tsquery = sql`websearch_to_tsquery('pt_unaccent', ${q})`;
+
+  const rows = await db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      topicTitle: topics.title,
+      goalTitle: goals.title,
+      updatedAt: notes.updatedAt,
+      headline: sql<string>`ts_headline(
+        'pt_unaccent',
+        ${notes.content},
+        ${tsquery},
+        ${`StartSel=${SEL_START}, StopSel=${SEL_STOP}, MaxWords=28, MinWords=12, MaxFragments=2, FragmentDelimiter= … `}
+      )`,
+    })
+    .from(notes)
+    .leftJoin(topics, eq(notes.topicId, topics.id))
+    .leftJoin(goals, eq(topics.goalId, goals.id))
+    .where(and(eq(notes.ownerId, ownerId), sql`${vector} @@ ${tsquery}`))
+    .orderBy(sql`ts_rank(${vector}, ${tsquery}) desc`)
+    .limit(limit);
+
+  // Ranking happens in ORDER BY; the score itself is never shown, so it does
+  // not need to travel back.
+  return rows.map(({ headline, ...r }) => ({
+    ...r,
+    snippet: splitHeadline(headline),
+  }));
+}
+
+export type NoteBrowseItem = {
+  id: string;
+  title: string;
+  topicTitle: string | null;
+  goalTitle: string | null;
+  nextStep: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  length: number;
+};
+
+/** Every note, newest first — what the page shows before anything is typed. */
+export async function listAllNotes(ownerId: string): Promise<NoteBrowseItem[]> {
+  const rows = await db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      topicTitle: topics.title,
+      goalTitle: goals.title,
+      nextStep: notes.nextStep,
+      createdAt: notes.createdAt,
+      updatedAt: notes.updatedAt,
+      length: sql<number>`length(${notes.content})`,
+    })
+    .from(notes)
+    .leftJoin(topics, eq(notes.topicId, topics.id))
+    .leftJoin(goals, eq(topics.goalId, goals.id))
+    .where(eq(notes.ownerId, ownerId))
+    .orderBy(desc(notes.createdAt));
+  return rows.map((r) => ({ ...r, length: Number(r.length) }));
+}
+
 export async function createNote(input: NewNote) {
   const [row] = await db.insert(notes).values(input).returning({ id: notes.id });
   return row;

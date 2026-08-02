@@ -11,6 +11,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -398,6 +399,20 @@ export const notes = pgTable(
     index("notes_owner_idx").on(t.ownerId),
     index("notes_topic_idx").on(t.topicId),
     index("notes_session_idx").on(t.sessionId),
+    // Full text over title + body under `pt_unaccent` — the `portuguese`
+    // config with unaccent in front of the stemmer (created in migration 0017).
+    //
+    // Measured, not assumed: the Portuguese snowball stemmer does NOT conflate
+    // "injeção"/"injeções" ('injeçã' vs 'injeçõ') nor "revisão"/"revisar". What
+    // it does give is regular inflection, and unaccent adds the case that
+    // actually comes up while typing — "conteudo" finding "conteúdo".
+    //
+    // The config name is a literal, so the expression stays IMMUTABLE and
+    // indexable. Queries MUST use the same name or the index is skipped.
+    index("notes_fts_idx").using(
+      "gin",
+      sql`to_tsvector('pt_unaccent', ${t.title} || ' ' || ${t.content})`,
+    ),
   ],
 );
 

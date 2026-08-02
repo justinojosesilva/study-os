@@ -7,6 +7,7 @@ import {
   Home,
   CalendarDays,
   RefreshCw,
+  NotebookPen,
   Library,
   Award,
   Sparkles,
@@ -40,6 +41,15 @@ const SECTIONS: NavSection[] = [
   {
     label: "Biblioteca",
     items: [
+      {
+        href: "/notes",
+        label: "Anotações",
+        icon: NotebookPen,
+        // /notes/[id] is reached from a topic or the agenda too, but it always
+        // belongs to this section — the crumb, not the entry point, tells the
+        // user where they came from.
+        match: (p) => p.startsWith("/notes"),
+      },
       { href: "/materials", label: "Materiais", icon: Library, match: (p) => p.startsWith("/materials") },
       { href: "/certifications", label: "Certificações", icon: Award, match: (p) => p.startsWith("/certifications") },
     ],

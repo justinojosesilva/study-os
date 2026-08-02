@@ -1,0 +1,1 @@
+CREATE INDEX "notes_fts_idx" ON "notes" USING gin (to_tsvector('portuguese', "title" || ' ' || "content"));
