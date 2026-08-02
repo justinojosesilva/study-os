@@ -15,6 +15,7 @@ import { askTutor, type TutorMode, type TutorResult } from "@/domain/ai/tutor";
 import { createGoal, getGoalWithTopics } from "@/domain/goals/repository";
 import { createTopic } from "@/domain/topics/repository";
 import { getTopicContext } from "@/domain/flashcards/repository";
+import { listNotesForTopicWithContent } from "@/domain/notes/repository";
 
 // AI actions read tenant context inside a short RLS-scoped transaction, then
 // call the model OUTSIDE it — we never hold a DB transaction open across the
@@ -37,13 +38,17 @@ export async function generateRoadmapAction(
 export async function generateFlashcardsAction(
   topicId: string,
   content?: string,
+  strictContent = false,
 ): Promise<FlashcardGenResult> {
+  // `content` is whatever the caller wants turned into cards — pasted text, or
+  // the body of one note. No need to gather the topic's other notes here.
   const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
   if (!ctx) return { ok: false, error: "Tópico não encontrado." };
   return generateFlashcards({
     topicTitle: ctx.topicTitle,
     goalTitle: ctx.goalTitle,
     content,
+    strictContent,
   });
 }
 
@@ -52,7 +57,14 @@ export async function askTutorAction(
   mode: TutorMode,
   question?: string,
 ): Promise<TutorResult> {
-  const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
+  const ctx = await scoped(async (ownerId) => {
+    const topic = await getTopicContext(ownerId, topicId);
+    if (!topic) return null;
+    // The tutor used to answer without ever seeing what the student had
+    // already written about the topic.
+    const notes = await listNotesForTopicWithContent(ownerId, topicId, 4);
+    return { ...topic, notes };
+  });
   if (!ctx) return { ok: false, error: "Tópico não encontrado." };
 
   // Read context in a short scoped transaction, call the AI outside it, then
@@ -62,6 +74,7 @@ export async function askTutorAction(
     goalTitle: ctx.goalTitle,
     mode,
     question,
+    notes: ctx.notes,
   });
 
   if (res.ok) {

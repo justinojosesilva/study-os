@@ -26,16 +26,25 @@ export async function generateFlashcards(input: {
   topicTitle: string;
   goalTitle: string;
   content?: string;
+  /**
+   * When the caller IS a document — a note — the text is the subject, not extra
+   * context. Without this the topic title wins: a note about dependency
+   * injection filed under an "AWS Lambda" topic produced eight Lambda cards.
+   */
+  strictContent?: boolean;
 }): Promise<FlashcardGenResult> {
   if (isMockMode()) {
     return { ok: true, data: mockCards(input.topicTitle), mocked: true };
   }
 
+  const grounded = input.strictContent && input.content?.trim();
   const prompt = [
     `Objetivo: ${input.goalTitle}`,
     `Tópico: ${input.topicTitle}`,
     input.content?.trim() ? `Conteúdo/anotações:\n${input.content.trim()}` : null,
-    "Gere os flashcards.",
+    grounded
+      ? "Gere os flashcards EXCLUSIVAMENTE a partir do conteúdo acima. Não acrescente conhecimento do tópico que não esteja escrito ali. Se o conteúdo não der 5 cards, gere menos."
+      : "Gere os flashcards.",
   ]
     .filter(Boolean)
     .join("\n");

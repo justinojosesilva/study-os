@@ -33,6 +33,8 @@ export type QuizSource = {
   lessons: { title: string; kind: "aula" | "lab"; content: string }[];
   flashcards: { front: string; back: string }[];
   tutorAnswers: { question: string | null; answer: string }[];
+  /** The student's own written syntheses — evidence, not source of truth. */
+  notes: { title: string; content: string }[];
 };
 
 /**
@@ -44,6 +46,8 @@ export type QuizSource = {
  *
  *   flashcards    already distilled question/answer pairs — the best value per
  *                 character there is, so they go in whole;
+ *   notes         what the student actually wrote and how they frame it, newest
+ *                 first, because a rewritten synthesis supersedes its draft;
  *   tutor answers short and specific to what confused you, kept recent-first;
  *   lab           where application shows up, which is what a quiz should test;
  *   lesson        the concepts, included last and trimmed hardest.
@@ -52,7 +56,7 @@ export type QuizSource = {
  * the closing usually carries the exercises. A plain head-truncation would drop
  * exactly the part that makes good questions.
  */
-const BUDGET = { lab: 14000, aula: 9000, tutor: 6000 } as const;
+const BUDGET = { lab: 14000, aula: 9000, tutor: 6000, notes: 10000 } as const;
 
 function squeeze(text: string, limit: number): string {
   const clean = text.trim();
@@ -76,6 +80,22 @@ function buildContext(src: QuizSource, count: number): string {
       "",
       "FLASHCARDS (já revisados pelo aluno):",
       src.flashcards.map((c) => `- P: ${c.front}\n  R: ${c.back}`).join("\n"),
+    );
+  }
+
+  if (src.notes.length) {
+    let left = BUDGET.notes;
+    const chunks: string[] = [];
+    for (const n of src.notes) {
+      if (left <= 0) break;
+      const piece = `--- ${n.title} ---\n${squeeze(n.content, Math.min(left, 4000))}`;
+      chunks.push(piece);
+      left -= piece.length;
+    }
+    parts.push(
+      "",
+      "ANOTAÇÕES DO PRÓPRIO ALUNO (o que ele escreveu, na ordem da mais recente para a mais antiga):",
+      chunks.join("\n\n"),
     );
   }
 
@@ -115,8 +135,24 @@ verificar se o aluno sabe usar, não se decorou. Prefira cenários, diagnóstico
 entre alternativas plausíveis; evite pegadinhas de sintaxe e perguntas que se respondem só lendo o
 enunciado.
 
+As ANOTAÇÕES DO PRÓPRIO ALUNO têm status diferente do resto: elas mostram o que ele estudou de
+fato e com que palavras pensa o assunto — NÃO são fonte de verdade. Use-as para escolher o recorte
+e o vocabulário das questões. Se uma anotação contradisser a aula ou o laboratório, não reproduza
+o erro: pergunte sobre esse ponto e traga a alternativa correta do material.
+
+NUNCA atribua uma opinião ou um engano ao aluno. Não escreva "o aluno anotou que…", "o aluno
+acredita que…" nem nada equivalente, e não descreva o que ele teria concluído. Uma anotação que
+adverte contra um erro não significa que ele cometeu esse erro. Faça a pergunta de forma direta,
+sobre o assunto — a alternativa errada carrega o engano, o enunciado não acusa ninguém.
+
 Quando o material vier com um trecho omitido, não invente o conteúdo que falta: pergunte sobre o
-que está presente. "correctIndex" é o índice (base 0) da alternativa correta. "explanation" diz em
+que está presente.
+
+NÚMEROS SÓ SE ESTIVEREM ESCRITOS. Tempos, uso de memória, percentuais, versões, nomes de arquivo e
+saídas de terminal só podem aparecer se constarem literalmente no material. Se você quer perguntar
+sobre uma medição que o material menciona sem o valor, descreva a medição em palavras ("o startup
+medido no Lab 1", "a redução de RSS observada") em vez de arriscar um número. Um valor inventado
+vira decoreba errada, que é o oposto do objetivo. "correctIndex" é o índice (base 0) da alternativa correta. "explanation" diz em
 1-2 frases por que a correta está certa. Responda SEMPRE em português do Brasil.`;
 
 export async function generateQuiz(
@@ -124,12 +160,15 @@ export async function generateQuiz(
   questionCount: number,
 ): Promise<QuizResult> {
   const hasMaterial =
-    src.lessons.length > 0 || src.flashcards.length > 0 || src.tutorAnswers.length > 0;
+    src.lessons.length > 0 ||
+    src.flashcards.length > 0 ||
+    src.tutorAnswers.length > 0 ||
+    src.notes.length > 0;
   if (!hasMaterial) {
     return {
       ok: false,
       error:
-        "Este tópico ainda não tem material. Adicione uma aula ou lab, flashcards, ou pergunte ao tutor antes de gerar o questionário.",
+        "Este tópico ainda não tem material. Escreva uma anotação, adicione uma aula ou lab, crie flashcards, ou pergunte ao tutor antes de gerar o questionário.",
     };
   }
 

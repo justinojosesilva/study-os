@@ -8,6 +8,7 @@ import {
   flashcards,
   lessons,
   tutorAnswers,
+  notes,
 } from "@/infra/db/schema";
 import { and, eq, asc, desc, isNotNull, isNull, inArray, sql } from "drizzle-orm";
 
@@ -338,7 +339,7 @@ export async function getQuizMaterial(ownerId: string, topicId: string) {
     .limit(1);
   if (!topic) return null;
 
-  const [lessonRows, cardRows, tutorRows] = await Promise.all([
+  const [lessonRows, cardRows, tutorRows, noteRows] = await Promise.all([
     db
       .select({ title: lessons.title, kind: lessons.kind, content: lessons.content })
       .from(lessons)
@@ -353,7 +354,21 @@ export async function getQuizMaterial(ownerId: string, topicId: string) {
       .where(and(eq(tutorAnswers.ownerId, ownerId), eq(tutorAnswers.topicId, topicId)))
       .orderBy(desc(tutorAnswers.createdAt))
       .limit(10),
+    // What the student wrote themselves. Newest first: a rewritten synthesis
+    // supersedes the earlier draft, and both are in the table.
+    db
+      .select({ title: notes.title, content: notes.content })
+      .from(notes)
+      .where(and(eq(notes.ownerId, ownerId), eq(notes.topicId, topicId)))
+      .orderBy(desc(notes.updatedAt))
+      .limit(6),
   ]);
 
-  return { ...topic, lessons: lessonRows, flashcards: cardRows, tutorAnswers: tutorRows };
+  return {
+    ...topic,
+    lessons: lessonRows,
+    flashcards: cardRows,
+    tutorAnswers: tutorRows,
+    notes: noteRows,
+  };
 }

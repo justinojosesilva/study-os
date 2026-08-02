@@ -4,6 +4,7 @@ import { getNote } from "@/domain/notes/repository";
 import { formatDayMonth, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { NoteEditor } from "@/app/_components/NoteEditor";
+import { NoteFlashcards } from "@/app/_components/NoteFlashcards";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,16 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           initialContent={note.content}
           initialNextStep={note.nextStep}
         />
+
+        {/* A card belongs to a topic, so this only appears when the note has
+            one — a free-study note has nowhere to file the cards. */}
+        {note.topicId && note.goalId && (
+          <NoteFlashcards
+            topicId={note.topicId}
+            goalId={note.goalId}
+            content={note.content}
+          />
+        )}
       </main>
     );
   });

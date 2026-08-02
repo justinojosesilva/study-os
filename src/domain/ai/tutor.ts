@@ -29,11 +29,38 @@ function instruction(mode: TutorMode, question: string | undefined): string {
   }
 }
 
+/**
+ * Budget for the student's own notes. Smaller than the quiz's: the tutor
+ * answers one question, and what matters is knowing where the student already
+ * is — not re-reading everything they wrote.
+ */
+const NOTES_BUDGET = 6000;
+
+function notesBlock(notes: { title: string; content: string }[]): string | null {
+  if (notes.length === 0) return null;
+  let left = NOTES_BUDGET;
+  const chunks: string[] = [];
+  for (const n of notes) {
+    if (left <= 0) break;
+    const body = n.content.trim().slice(0, Math.min(left, 2500));
+    const piece = `--- ${n.title} ---\n${body}`;
+    chunks.push(piece);
+    left -= piece.length;
+  }
+  return [
+    "ANOTAÇÕES QUE O ALUNO JÁ ESCREVEU SOBRE ESTE TÓPICO (da mais recente para a mais antiga):",
+    chunks.join("\n\n"),
+    "Use isso para não repetir o que ele já domina e para falar na linguagem dele. As anotações",
+    "não são fonte de verdade: se houver erro ou confusão nelas, aponte com clareza e corrija.",
+  ].join("\n");
+}
+
 export async function askTutor(input: {
   topicTitle: string;
   goalTitle: string;
   mode: TutorMode;
   question?: string;
+  notes?: { title: string; content: string }[];
 }): Promise<TutorResult> {
   if (isMockMode()) {
     return { ok: true, text: mockText(input), mocked: true };
@@ -42,8 +69,11 @@ export async function askTutor(input: {
   const prompt = [
     `Objetivo de estudo: ${input.goalTitle}`,
     `Tópico: ${input.topicTitle}`,
+    notesBlock(input.notes ?? []),
     instruction(input.mode, input.question),
-  ].join("\n");
+  ]
+    .filter((p): p is string => Boolean(p))
+    .join("\n\n");
 
   try {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");

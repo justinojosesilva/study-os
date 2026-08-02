@@ -268,6 +268,24 @@ export async function listAllNotes(ownerId: string): Promise<NoteBrowseItem[]> {
   return rows.map((r) => ({ ...r, length: Number(r.length) }));
 }
 
+/**
+ * Bodies included — for the AI paths (tutor context, quiz material), which are
+ * the only callers that need the text itself. Newest first, because a rewritten
+ * synthesis supersedes the draft it came from and both rows survive.
+ */
+export async function listNotesForTopicWithContent(
+  ownerId: string,
+  topicId: string,
+  limit = 6,
+): Promise<{ title: string; content: string }[]> {
+  return db
+    .select({ title: notes.title, content: notes.content })
+    .from(notes)
+    .where(and(eq(notes.ownerId, ownerId), eq(notes.topicId, topicId)))
+    .orderBy(desc(notes.updatedAt))
+    .limit(limit);
+}
+
 export async function createNote(input: NewNote) {
   const [row] = await db.insert(notes).values(input).returning({ id: notes.id });
   return row;

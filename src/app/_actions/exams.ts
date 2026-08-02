@@ -97,6 +97,7 @@ export async function generateQuizAction(topicId: string): Promise<GenerateExamR
       lessons: material.lessons,
       flashcards: material.flashcards,
       tutorAnswers: material.tutorAnswers,
+      notes: material.notes,
     },
     QUIZ_QUESTION_COUNT,
   );
