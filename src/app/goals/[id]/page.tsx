@@ -6,6 +6,7 @@ import { getGoalWithTopics } from "@/domain/goals/repository";
 import { listFlashcardsForGoal } from "@/domain/flashcards/repository";
 import { listMaterialsForGoal } from "@/domain/materials/repository";
 import { listLessonsForGoal } from "@/domain/lessons/repository";
+import { listNotesForGoal } from "@/domain/notes/repository";
 import { listExamsForGoal } from "@/domain/exams/repository";
 import { PRACTICING_CREDIT } from "@/lib/progress";
 import { ExamCard } from "@/app/_components/ExamCard";
@@ -37,11 +38,12 @@ export default async function GoalDetailPage({
   const goal = await getGoalWithTopics(ownerId, id);
   if (!goal) notFound();
 
-  const [allCards, materials, certs, allLessons, examAttempts] = await Promise.all([
+  const [allCards, materials, certs, allLessons, allNotes, examAttempts] = await Promise.all([
     listFlashcardsForGoal(ownerId, id),
     listMaterialsForGoal(ownerId, id),
     listCertificationsForGoal(ownerId, id),
     listLessonsForGoal(ownerId, id),
+    listNotesForGoal(ownerId, id),
     listExamsForGoal(ownerId, id),
   ]);
   const cardsByTopic = new Map<string, { id: string; front: string; back: string }[]>();
@@ -58,6 +60,14 @@ export default async function GoalDetailPage({
     const list = lessonsByTopic.get(l.topicId) ?? [];
     list.push({ id: l.id, title: l.title, kind: l.kind, completedAt: l.completedAt });
     lessonsByTopic.set(l.topicId, list);
+  }
+
+  const notesByTopic = new Map<string, typeof allNotes>();
+  for (const n of allNotes) {
+    if (!n.topicId) continue;
+    const list = notesByTopic.get(n.topicId) ?? [];
+    list.push(n);
+    notesByTopic.set(n.topicId, list);
   }
 
   const cat = CATEGORY[goal.category];
@@ -157,6 +167,7 @@ export default async function GoalDetailPage({
             topics={goal.topics}
             cardsByTopic={cardsByTopic}
             lessonsByTopic={lessonsByTopic}
+            notesByTopic={notesByTopic}
           />
         )}
         <AddTopicForm goalId={goal.id} />

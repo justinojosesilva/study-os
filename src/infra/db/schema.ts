@@ -356,6 +356,52 @@ export const lessons = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// notes — what the user WROTE while studying, as opposed to `lessons`, which
+// is material to study. Markdown, same renderer.
+//
+// It lives here and not on `study_sessions` on purpose: that table is an
+// immutable event log (hours, streak and the heatmap all aggregate from it),
+// and a note is the opposite — a document to be revised and extended. The real
+// notes proved it: two sessions 43 minutes apart held the same synthesis, the
+// second one rewritten, because there was no way to edit the first.
+//
+// So the note belongs to the TOPIC, which is also the axis you search along;
+// `session_id` keeps the "written during which session" without making the
+// session its owner. Null session = written outside a timed block.
+// ---------------------------------------------------------------------------
+
+export const notes = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Nullable, mirroring `study_sessions.topic_id`: "estudo livre" is a real
+    // option in the logger, and a NOT NULL here would mean either refusing to
+    // save what the user just wrote or dropping it silently. The topic is the
+    // normal case and the axis notes are browsed by; null is the escape hatch.
+    topicId: uuid("topic_id").references(() => topics.id, { onDelete: "cascade" }),
+    // Deleting a session must not delete the knowledge written during it.
+    sessionId: uuid("session_id").references(() => studySessions.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    content: text("content").notNull(), // markdown
+    // The one field adopted from the redesign proposal: it has a job the body
+    // text does not — telling the next session where to pick up.
+    nextStep: text("next_step"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("notes_owner_idx").on(t.ownerId),
+    index("notes_topic_idx").on(t.topicId),
+    index("notes_session_idx").on(t.sessionId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // certifications — a credential the user targets or holds (the "certify" step
 // of the plan→execute→review→certify→résumé journey). Mutable stateful entity
 // (like goals), NOT an event log. Optionally linked to the goal that studies
@@ -480,6 +526,8 @@ export type Certification = typeof certifications.$inferSelect;
 export type NewCertification = typeof certifications.$inferInsert;
 export type Lesson = typeof lessons.$inferSelect;
 export type NewLesson = typeof lessons.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;
 export type Exam = typeof exams.$inferSelect;
 export type NewExam = typeof exams.$inferInsert;
 export type ExamQuestion = typeof examQuestions.$inferSelect;

@@ -12,8 +12,10 @@ import { generateQuizAction } from "@/app/_actions/exams";
 import { FlashcardsDialog } from "./FlashcardsDialog";
 import { TutorDialog } from "./TutorDialog";
 import { LessonsDialog } from "./LessonsDialog";
+import { NotesDialog } from "./NotesDialog";
 import { TOPIC_STATUS, STATUS_FLOW, MANUAL_STATUSES, type TopicStatus } from "@/lib/topic-status";
 import type { Topic } from "@/infra/db/schema";
+import type { NoteListItem } from "@/domain/notes/repository";
 
 type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status" | "phase">;
 type CardLite = { id: string; front: string; back: string };
@@ -26,12 +28,14 @@ export function TopicCard({
   goalId,
   cards,
   lessons,
+  notes,
   phases = [],
 }: {
   topic: TopicLite;
   goalId: string;
   cards: CardLite[];
   lessons: LessonLite[];
+  notes: NoteListItem[];
   /** Phases already in use on this goal, offered as options. */
   phases?: string[];
 }) {
@@ -185,6 +189,12 @@ export function TopicCard({
             topicTitle={topic.title}
             goalId={goalId}
             lessons={lessons}
+          />
+          <NotesDialog
+            topicId={topic.id}
+            topicTitle={topic.title}
+            goalId={goalId}
+            notes={notes}
           />
           <FlashcardsDialog
             topicId={topic.id}

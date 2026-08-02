@@ -36,6 +36,15 @@ export function formatMonthYear(date: Date): string {
   return `${MONTHS_PT[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+/**
+ * "21/jul" — anchored to APP_TIMEZONE like toDateKey, so a note written at
+ * 22:00 in São Paulo is not dated to the next day.
+ */
+export function formatDayMonth(date: Date): string {
+  const [, m, d] = toDateKey(date).split("-");
+  return `${d}/${MONTHS_PT[Number(m) - 1]}`;
+}
+
 /** Whole days from today until `date` (negative = past). */
 export function daysUntil(date: Date): number {
   const ms = startOfDay(date).getTime() - startOfToday().getTime();

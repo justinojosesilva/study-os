@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { LessonContent } from "./LessonContent";
 
 /**
@@ -17,7 +18,7 @@ import { LessonContent } from "./LessonContent";
  * the count says how much is hidden, which a gradient never does — and it
  * needs no assumption about the background colour behind it.
  */
-export function SessionNote({ content }: { content: string }) {
+export function SessionNote({ content, href }: { content: string; href?: string }) {
   const [open, setOpen] = useState(false);
   const text = content.trim();
   // Short notes have nothing to hide — three of them are a single line.
@@ -27,6 +28,7 @@ export function SessionNote({ content }: { content: string }) {
     return (
       <div className="mt-1.5 border-l-2 border-line pl-2.5">
         <LessonContent content={text} compact />
+        {href && <OpenLink href={href} />}
       </div>
     );
   }
@@ -40,22 +42,37 @@ export function SessionNote({ content }: { content: string }) {
       <div className={open ? undefined : "max-h-36 overflow-clip"}>
         <LessonContent content={text} compact />
       </div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
-      >
-        {open ? (
-          <>
-            <ChevronUp size={13} /> Recolher
-          </>
-        ) : (
-          <>
-            <ChevronDown size={13} /> Ver anotação completa (
-            {text.length.toLocaleString("pt-BR")} caracteres)
-          </>
-        )}
-      </button>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
+        >
+          {open ? (
+            <>
+              <ChevronUp size={13} /> Recolher
+            </>
+          ) : (
+            <>
+              <ChevronDown size={13} /> Ver aqui ({text.length.toLocaleString("pt-BR")}{" "}
+              caracteres)
+            </>
+          )}
+        </button>
+        {href && <OpenLink href={href} />}
+      </div>
     </div>
+  );
+}
+
+/** Now that a note is its own document, it has a place of its own to open in. */
+function OpenLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 text-xs font-medium text-profissional hover:underline"
+    >
+      <Pencil size={12} /> Abrir e editar
+    </Link>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Layers3, Sparkles } from "lucide-react";
 import { groupTopicsIntoPhasesAction } from "@/app/_actions/ai";
 import { TopicCard } from "./TopicCard";
+import type { NoteListItem } from "@/domain/notes/repository";
 import { PRACTICING_CREDIT } from "@/lib/progress";
 import type { Topic } from "@/infra/db/schema";
 
@@ -24,11 +25,13 @@ export function TopicGroups({
   topics,
   cardsByTopic,
   lessonsByTopic,
+  notesByTopic,
 }: {
   goalId: string;
   topics: TopicLite[];
   cardsByTopic: Map<string, CardLite[]>;
   lessonsByTopic: Map<string, LessonLite[]>;
+  notesByTopic: Map<string, NoteListItem[]>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -99,6 +102,7 @@ export function TopicGroups({
                   goalId={goalId}
                   cards={cardsByTopic.get(t.id) ?? []}
                   lessons={lessonsByTopic.get(t.id) ?? []}
+                  notes={notesByTopic.get(t.id) ?? []}
                   phases={phaseNames}
                 />
               ))}

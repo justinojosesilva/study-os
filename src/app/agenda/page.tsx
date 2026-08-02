@@ -5,6 +5,7 @@ import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { getAvailability } from "@/domain/user/repository";
 import { listTopicsForPicker, type PickerTopic } from "@/domain/topics/repository";
 import { listSessionsBetween } from "@/domain/sessions/repository";
+import { listNotesBySessions } from "@/domain/notes/repository";
 import { toDateKey, addDays, startOfToday, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { AvailabilitySettings } from "@/app/_components/AvailabilitySettings";
@@ -45,6 +46,14 @@ export default async function AgendaPage() {
       listSessionsBetween(ownerId, monthStart, monthEnd),
     ]);
 
+    // Notes now live in their own table; the session only points at the moment
+    // they were written. One extra query keyed by session id, rather than a
+    // join, so the session list keeps its shape.
+    const noteBySession = await listNotesBySessions(
+      ownerId,
+      monthSessions.map((s) => s.id),
+    );
+
     const hasAnyBlocks = plan.days.some((d) => d.blocks.length > 0);
 
     // The 7-day plan and the month's actual sessions, both keyed by local date.
@@ -60,7 +69,7 @@ export default async function AgendaPage() {
         durationMin: s.durationMin,
         comprehension: s.comprehension,
         startedAt: s.startedAt,
-        notes: s.notes,
+        note: noteBySession.get(s.id) ?? null,
       });
     }
     const hasPast = Object.keys(pastByDate).length > 0;
@@ -136,7 +145,9 @@ export default async function AgendaPage() {
               {plan.days.map((day) => (
                 <DayCard key={day.date.toISOString()} day={day} topics={topics} />
               ))}
-              {hasPast && <RecentHistory sessions={monthSessions} />}
+              {hasPast && (
+                <RecentHistory sessions={monthSessions} noteBySession={noteBySession} />
+              )}
             </div>
           </>
         )}
@@ -148,7 +159,13 @@ export default async function AgendaPage() {
 type MonthSession = Awaited<ReturnType<typeof listSessionsBetween>>[number];
 
 /** This month's sessions, newest first, grouped by the day they happened on. */
-function RecentHistory({ sessions }: { sessions: MonthSession[] }) {
+function RecentHistory({
+  sessions,
+  noteBySession,
+}: {
+  sessions: MonthSession[];
+  noteBySession: Map<string, { id: string; title: string; content: string }>;
+}) {
   const byDay = new Map<string, MonthSession[]>();
   for (const s of sessions) {
     const key = toDateKey(s.startedAt);
@@ -186,7 +203,12 @@ function RecentHistory({ sessions }: { sessions: MonthSession[] }) {
                         <span className="font-medium text-ink">{fmtMin(s.durationMin)}</span>
                       </span>
                     </div>
-                    {s.notes && <SessionNote content={s.notes} />}
+                    {noteBySession.get(s.id) && (
+                      <SessionNote
+                        content={noteBySession.get(s.id)!.content}
+                        href={`/notes/${noteBySession.get(s.id)!.id}`}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

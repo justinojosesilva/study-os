@@ -22,7 +22,7 @@ export type PastSession = {
   durationMin: number;
   comprehension: number | null;
   startedAt: Date;
-  notes: string | null;
+  note: { id: string; title: string; content: string } | null;
 };
 
 export type DayCell = {
@@ -223,7 +223,9 @@ export function MonthCalendar({
                         <p className="mt-0.5 text-xs text-faint tabular-nums">
                           {formatTime(s.startedAt)}
                         </p>
-                        {s.notes && <SessionNote content={s.notes} />}
+                        {s.note && (
+                          <SessionNote content={s.note.content} href={`/notes/${s.note.id}`} />
+                        )}
                       </li>
                     ))}
                   </ul>
