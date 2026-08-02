@@ -1,7 +1,15 @@
 import { db } from "@/infra/db/client";
-import { studySessions, topics, flashcardReviews, flashcards, certifications } from "@/infra/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import {
+  studySessions,
+  topics,
+  flashcardReviews,
+  flashcards,
+  certifications,
+  lessons,
+} from "@/infra/db/schema";
+import { and, eq, sql, isNotNull } from "drizzle-orm";
 import { currentStreak } from "./metrics";
+import { PRACTICING_CREDIT } from "@/lib/progress";
 
 /**
  * Gamification — XP, level and achievements DERIVED from the event log. Nothing
@@ -14,6 +22,28 @@ const XP_PER_MINUTE = 1;
 const XP_PER_REVIEW = 5;
 const XP_PER_MASTERED = 50;
 const XP_PER_CERT = 200;
+
+/**
+ * Practising pays the same share of a topic that it earns everywhere else —
+ * `PRACTICING_CREDIT`, not a number of its own. Progress bars, the phase
+ * average, the waffle and now XP all move together when that rule changes.
+ *
+ * It also softens the demotion: failing a quiz drops a topic from `mastered` to
+ * `praticando`, which used to erase all 50 XP and now costs 25. Losing half for
+ * a bad attempt matches what the status means — you did not stop knowing it.
+ */
+const XP_PER_PRACTICING = XP_PER_MASTERED * PRACTICING_CREDIT;
+
+/**
+ * Finishing a lesson or a lab is real work that no other counter saw: study
+ * minutes reward sitting down, mastery rewards the outcome, and the reading and
+ * practice in between paid nothing.
+ *
+ * Deliberately NOT extended to quizzes: passing one already promotes the topic
+ * and pays the mastery XP, so paying again would count the same event twice —
+ * and retaking a quiz would turn into a way to farm XP.
+ */
+const XP_PER_LESSON = 10;
 
 export type Achievement = {
   id: string;
@@ -29,8 +59,24 @@ export type Gamification = {
   xpInLevel: number;
   xpForNext: number;
   progressPct: number;
-  breakdown: { studyXp: number; reviewXp: number; masteryXp: number; certXp: number };
-  stats: { minutes: number; reviews: number; mastered: number; flashcards: number; streak: number; certs: number };
+  breakdown: {
+    studyXp: number;
+    reviewXp: number;
+    /** Mastered and practising together — one source, two rates. */
+    masteryXp: number;
+    lessonXp: number;
+    certXp: number;
+  };
+  stats: {
+    minutes: number;
+    reviews: number;
+    mastered: number;
+    practicing: number;
+    lessons: number;
+    flashcards: number;
+    streak: number;
+    certs: number;
+  };
   achievements: Achievement[];
 };
 
@@ -53,20 +99,24 @@ function titleForLevel(level: number): string {
 }
 
 export async function getGamification(ownerId: string): Promise<Gamification> {
-  const [minutes, reviews, mastered, flashcardsCount, streak, certs] = await Promise.all([
-    totalStudyMinutes(ownerId),
-    reviewsCount(ownerId),
-    masteredCount(ownerId),
-    flashcardsCountFor(ownerId),
-    currentStreak(ownerId),
-    passedCertsCount(ownerId),
-  ]);
+  const [minutes, reviews, topicCounts, lessonsDone, flashcardsCount, streak, certs] =
+    await Promise.all([
+      totalStudyMinutes(ownerId),
+      reviewsCount(ownerId),
+      topicStatusCounts(ownerId),
+      completedLessonsCount(ownerId),
+      flashcardsCountFor(ownerId),
+      currentStreak(ownerId),
+      passedCertsCount(ownerId),
+    ]);
 
+  const { mastered, practicing } = topicCounts;
   const studyXp = minutes * XP_PER_MINUTE;
   const reviewXp = reviews * XP_PER_REVIEW;
-  const masteryXp = mastered * XP_PER_MASTERED;
+  const masteryXp = mastered * XP_PER_MASTERED + practicing * XP_PER_PRACTICING;
+  const lessonXp = lessonsDone * XP_PER_LESSON;
   const certXp = certs * XP_PER_CERT;
-  const totalXp = studyXp + reviewXp + masteryXp + certXp;
+  const totalXp = studyXp + reviewXp + masteryXp + lessonXp + certXp;
 
   const level = levelForXp(totalXp);
   const base = xpForLevel(level);
@@ -81,9 +131,26 @@ export async function getGamification(ownerId: string): Promise<Gamification> {
     xpInLevel,
     xpForNext,
     progressPct: xpForNext > 0 ? Math.round((xpInLevel / xpForNext) * 100) : 0,
-    breakdown: { studyXp, reviewXp, masteryXp, certXp },
-    stats: { minutes, reviews, mastered, flashcards: flashcardsCount, streak, certs },
-    achievements: buildAchievements({ minutes, reviews, mastered, flashcards: flashcardsCount, streak, certs }),
+    breakdown: { studyXp, reviewXp, masteryXp, lessonXp, certXp },
+    stats: {
+      minutes,
+      reviews,
+      mastered,
+      practicing,
+      lessons: lessonsDone,
+      flashcards: flashcardsCount,
+      streak,
+      certs,
+    },
+    achievements: buildAchievements({
+      minutes,
+      reviews,
+      mastered,
+      lessons: lessonsDone,
+      flashcards: flashcardsCount,
+      streak,
+      certs,
+    }),
   };
 }
 
@@ -91,6 +158,7 @@ function buildAchievements(s: {
   minutes: number;
   reviews: number;
   mastered: number;
+  lessons: number;
   flashcards: number;
   streak: number;
   certs: number;
@@ -103,6 +171,9 @@ function buildAchievements(s: {
     { id: "hours_50", label: "Maratonista", description: "Acumule 50 horas de estudo", unlocked: s.minutes >= 3000 },
     { id: "first_mastered", label: "Primeiro domínio", description: "Domine seu primeiro tópico", unlocked: s.mastered >= 1 },
     { id: "mastered_10", label: "Colecionador de skills", description: "Domine 10 tópicos", unlocked: s.mastered >= 10 },
+    // Every other XP source has an achievement; lessons would be the only one
+    // that pays XP and unlocks nothing.
+    { id: "lessons_10", label: "Matéria vencida", description: "Conclua 10 aulas ou labs", unlocked: s.lessons >= 10 },
     { id: "reviews_100", label: "Memória de elefante", description: "Faça 100 revisões", unlocked: s.reviews >= 100 },
     { id: "cards_20", label: "Baralho cheio", description: "Crie 20 flashcards", unlocked: s.flashcards >= 20 },
     { id: "first_cert", label: "Certificado!", description: "Conquiste sua primeira certificação", unlocked: s.certs >= 1 },
@@ -126,11 +197,29 @@ async function reviewsCount(ownerId: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
-async function masteredCount(ownerId: string): Promise<number> {
+/**
+ * Both statuses that pay XP, in one round trip — a filtered count rather than
+ * two queries, since they read the same rows.
+ */
+async function topicStatusCounts(
+  ownerId: string,
+): Promise<{ mastered: number; practicing: number }> {
+  const [row] = await db
+    .select({
+      mastered: sql<number>`count(*) filter (where ${topics.status} = 'mastered')`,
+      practicing: sql<number>`count(*) filter (where ${topics.status} = 'praticando')`,
+    })
+    .from(topics)
+    .where(eq(topics.ownerId, ownerId));
+  return { mastered: Number(row?.mastered ?? 0), practicing: Number(row?.practicing ?? 0) };
+}
+
+/** Aulas and labs count the same here: both are finished work. */
+async function completedLessonsCount(ownerId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)` })
-    .from(topics)
-    .where(and(eq(topics.ownerId, ownerId), eq(topics.status, "mastered")));
+    .from(lessons)
+    .where(and(eq(lessons.ownerId, ownerId), isNotNull(lessons.completedAt)));
   return Number(row?.n ?? 0);
 }
 

@@ -7,6 +7,7 @@ import {
   CircleCheckBig,
   Award,
   Brain,
+  BookOpen,
   Layers,
   Lock,
   type LucideIcon,
@@ -33,6 +34,7 @@ const ICONS: Record<string, LucideIcon> = {
   hours_50: Timer,
   first_mastered: CircleCheckBig,
   mastered_10: Award,
+  lessons_10: BookOpen,
   reviews_100: Brain,
   cards_20: Layers,
 };
@@ -95,12 +97,26 @@ export default async function ProgressPage({
 
       <section className="mb-8">
         <h2 className="mb-3 text-base font-medium">De onde vem seu XP</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <XpStat label="Estudo" value={g.breakdown.studyXp} hint={`${Math.round(g.stats.minutes / 60)}h`} />
           <XpStat label="Revisões" value={g.breakdown.reviewXp} hint={`${g.stats.reviews} revis.`} />
-          <XpStat label="Domínio" value={g.breakdown.masteryXp} hint={`${g.stats.mastered} tópicos`} />
+          <XpStat
+            label="Domínio"
+            value={g.breakdown.masteryXp}
+            hint={`${g.stats.mastered} ${g.stats.mastered === 1 ? "dominado" : "dominados"} · ${g.stats.practicing} praticando`}
+          />
+          <XpStat
+            label="Aulas"
+            value={g.breakdown.lessonXp}
+            hint={`${g.stats.lessons} ${g.stats.lessons === 1 ? "concluída" : "concluídas"}`}
+          />
           <XpStat label="Certificações" value={g.breakdown.certXp} hint={`${g.stats.certs} conquist.`} />
         </div>
+        <p className="mt-2 text-xs text-faint">
+          Praticar um tópico já vale metade do XP de dominá-lo — a mesma metade que ele conta no
+          progresso do objetivo. Questionário não paga XP à parte: passar num já promove o tópico e
+          paga pelo domínio.
+        </p>
       </section>
 
       <section>
