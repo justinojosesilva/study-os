@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { scoped } from "@/domain/auth";
 import { getLessonForReading } from "@/domain/lessons/repository";
 import { getProgress } from "@/domain/reading/repository";
+import { listNotesForLesson } from "@/domain/notes/repository";
 import { extractHeadings, readingMinutes } from "@/lib/headings";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { LessonReader } from "@/app/_components/LessonReader";
@@ -19,7 +20,10 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     // Headings and reading time are derived from the markdown on the server:
     // the client already has ~85k characters to render without also parsing
     // them twice to build an index.
-    const [progress] = await Promise.all([getProgress(ownerId, id)]);
+    const [progress, anchoredNotes] = await Promise.all([
+      getProgress(ownerId, id),
+      listNotesForLesson(ownerId, id),
+    ]);
     const headings = extractHeadings(lesson.content);
     const minutes = readingMinutes(lesson.content);
 
@@ -38,6 +42,9 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         <h1 className="mb-8 text-2xl font-medium tracking-tight">{lesson.title}</h1>
         <LessonReader
           lessonId={lesson.id}
+          topicId={lesson.topicId}
+          goalId={lesson.goalId}
+          anchoredNotes={anchoredNotes}
           content={lesson.content}
           headings={headings}
           minutes={minutes}

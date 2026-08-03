@@ -387,6 +387,16 @@ export const notes = pgTable(
     sessionId: uuid("session_id").references(() => studySessions.id, {
       onDelete: "set null",
     }),
+    // Set when the note was written from inside a lesson, over a selected
+    // passage. `set null` because deleting the lesson must not delete what the
+    // reader wrote about it.
+    lessonId: uuid("lesson_id").references(() => lessons.id, { onDelete: "set null" }),
+    // The section the passage was in, by heading slug — NOT a character
+    // offset. Editing one paragraph shifts every offset after it, while a
+    // heading survives anything short of renaming the section. If the section
+    // does disappear, the note still holds its quote and simply floats free.
+    anchorSlug: text("anchor_slug"),
+    quote: text("quote"),
     title: text("title").notNull(),
     content: text("content").notNull(), // markdown
     // The one field adopted from the redesign proposal: it has a job the body
@@ -399,6 +409,7 @@ export const notes = pgTable(
     index("notes_owner_idx").on(t.ownerId),
     index("notes_topic_idx").on(t.topicId),
     index("notes_session_idx").on(t.sessionId),
+    index("notes_lesson_idx").on(t.lessonId),
     // Full text over title + body under `pt_unaccent` — the `portuguese`
     // config with unaccent in front of the stemmer (created in migration 0017).
     //

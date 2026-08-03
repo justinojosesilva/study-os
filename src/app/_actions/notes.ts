@@ -39,6 +39,51 @@ export async function createNoteAction(fd: FormData): Promise<ActionResult> {
   });
 }
 
+/**
+ * A note written over a passage of a lesson.
+ *
+ * The quote goes into the body as a blockquote and into its own column: in the
+ * body so the note reads on its own later, in the column so the reader can list
+ * and jump to its annotations without parsing markdown back apart.
+ */
+export async function createAnchoredNoteAction(input: {
+  lessonId: string;
+  topicId: string;
+  anchorSlug: string | null;
+  quote: string;
+  comment: string;
+}): Promise<ActionResult> {
+  return scoped(async (ownerId) => {
+    const quote = input.quote.trim();
+    const comment = input.comment.trim();
+    if (!quote) return { ok: false, error: "Selecione um trecho." };
+    if (!(await ownsTopic(ownerId, input.topicId))) {
+      return { ok: false, error: "Tópico não encontrado." };
+    }
+
+    const quoted = quote
+      .split("\n")
+      .map((l) => `> ${l}`)
+      .join("\n");
+    const content = comment ? `${quoted}\n\n${comment}` : quoted;
+
+    const row = await createNote({
+      ownerId,
+      topicId: input.topicId,
+      lessonId: input.lessonId,
+      anchorSlug: input.anchorSlug,
+      quote,
+      // The comment titles the note when there is one; otherwise the passage
+      // does. A note titled with its own quote is still findable.
+      title: deriveTitle(comment || quote),
+      content,
+    });
+
+    revalidatePath(`/lessons/${input.lessonId}`);
+    return { ok: true, id: row.id };
+  });
+}
+
 export async function updateNoteAction(
   noteId: string,
   goalId: string,

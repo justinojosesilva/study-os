@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronsDownUp, ChevronsUpDown, CornerDownLeft, X } from "lucide-react";
 import { saveReadingProgressAction } from "@/app/_actions/reading";
 import type { Heading } from "@/lib/headings";
+import type { LessonNote as LessonNoteItem } from "@/domain/notes/repository";
 import { LessonContent } from "./LessonContent";
 import { ReaderSettings } from "./ReaderSettings";
+import { SelectionTools } from "./SelectionTools";
+import { LessonNotes } from "./LessonNotes";
 import { useReaderPrefs, surfaceStyle } from "./useReaderPrefs";
 
 /**
@@ -31,18 +34,24 @@ const SETTLE_CAP_MS = 20000;
 
 export function LessonReader({
   lessonId,
+  topicId,
+  goalId,
   content,
   headings,
   minutes,
   initialPercent,
   initialAnchor,
+  anchoredNotes,
 }: {
   lessonId: string;
+  topicId: string;
+  goalId: string;
   content: string;
   headings: Heading[];
   minutes: number;
   initialPercent: number;
   initialAnchor: string | null;
+  anchoredNotes: LessonNoteItem[];
 }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [percent, setPercent] = useState(initialPercent);
@@ -337,7 +346,7 @@ export function LessonReader({
       <div className="flex gap-8">
         <div
           ref={contentRef}
-          className={`min-w-0 flex-1 rounded-xl transition-colors ${
+          className={`relative min-w-0 flex-1 rounded-xl transition-colors ${
             prefs.family === "serif" ? "font-serif" : ""
           } ${prefs.surface === "sistema" ? "" : "px-5 py-4"}`}
           style={{
@@ -356,6 +365,13 @@ export function LessonReader({
             onToggleSection={toggleSection}
             style={surfaceStyle(prefs.surface)}
           />
+          <SelectionTools
+            lessonId={lessonId}
+            topicId={topicId}
+            goalId={goalId}
+            containerRef={contentRef}
+          />
+          <LessonNotes notes={anchoredNotes} onJump={jump} />
         </div>
 
         {headings.length >= 4 && (

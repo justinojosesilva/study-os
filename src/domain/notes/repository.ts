@@ -286,6 +286,32 @@ export async function listNotesForTopicWithContent(
     .limit(limit);
 }
 
+export type LessonNote = {
+  id: string;
+  title: string;
+  quote: string | null;
+  anchorSlug: string | null;
+  createdAt: Date;
+};
+
+/** Notes written over a passage of one lesson, oldest first (reading order). */
+export async function listNotesForLesson(
+  ownerId: string,
+  lessonId: string,
+): Promise<LessonNote[]> {
+  return db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      quote: notes.quote,
+      anchorSlug: notes.anchorSlug,
+      createdAt: notes.createdAt,
+    })
+    .from(notes)
+    .where(and(eq(notes.ownerId, ownerId), eq(notes.lessonId, lessonId)))
+    .orderBy(notes.createdAt);
+}
+
 export type NextStep = { noteId: string; text: string };
 
 /**
