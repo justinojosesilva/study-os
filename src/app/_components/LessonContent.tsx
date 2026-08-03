@@ -6,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
 import "highlight.js/styles/github-dark.css";
 import { Mermaid } from "./Mermaid";
+import { CopyButton } from "./CopyButton";
 import { ChevronRight } from "lucide-react";
 import { fixTabTables } from "@/lib/tab-tables";
 import { rehypeSections } from "@/lib/rehype-sections";
@@ -14,13 +15,33 @@ function isMermaid(className: unknown): boolean {
   return typeof className === "string" && className.includes("language-mermaid");
 }
 
+/** Raw text of a `<pre>`, taken from the hast node rather than React children:
+ *  the children are already elements once the highlighter has run. */
+function preText(node: unknown): string {
+  const out: string[] = [];
+  const walk = (n: unknown) => {
+    const el = n as { type?: string; value?: string; children?: unknown[] };
+    if (el?.type === "text" && typeof el.value === "string") out.push(el.value);
+    if (Array.isArray(el?.children)) el.children.forEach(walk);
+  };
+  walk(node);
+  return out.join("");
+}
+
 const components: Components = {
   // Drop the <pre> wrapper around mermaid blocks — <Mermaid/> renders its own.
-  pre({ children }) {
+  pre({ children, node }) {
     const child = Array.isArray(children) ? children[0] : children;
     const cls = (child as { props?: { className?: string } } | undefined)?.props?.className;
     if (isMermaid(cls)) return <>{children}</>;
-    return <pre>{children}</pre>;
+    // 47 code blocks in a single lesson: copying is the most-used action per
+    // character of code there is.
+    return (
+      <div className="group relative">
+        <CopyButton text={preText(node)} />
+        <pre>{children}</pre>
+      </div>
+    );
   },
   // A table wider than its container has to scroll inside itself, or it pushes
   // the whole page sideways. Matters most in the narrow session-note panels,
@@ -91,6 +112,7 @@ export function LessonContent({
   sections = false,
   collapsed,
   onToggleSection,
+  style,
 }: {
   content: string;
   /**
@@ -104,6 +126,8 @@ export function LessonContent({
   sections?: boolean;
   collapsed?: ReadonlySet<string>;
   onToggleSection?: (slug: string) => void;
+  /** Aplicado no próprio elemento `.prose` — ver surfaceStyle. */
+  style?: React.CSSProperties;
 }) {
   const rehype = sections
     ? [rehypeHighlight, rehypeSlug, rehypeSections]
@@ -122,8 +146,9 @@ export function LessonContent({
       className={`prose prose-stone max-w-none dark:prose-invert prose-headings:font-medium prose-a:text-profissional prose-pre:rounded-lg prose-pre:border prose-pre:border-line prose-img:rounded-lg ${
         compact
           ? "prose-sm prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1.5 prose-table:my-2 prose-pre:my-2"
-          : "prose-p:max-w-[68ch] prose-li:max-w-[68ch]"
+          : "prose-p:max-w-[var(--reader-measure,68ch)] prose-li:max-w-[var(--reader-measure,68ch)]"
       }`}
+      style={style}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

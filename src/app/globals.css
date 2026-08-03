@@ -270,3 +270,19 @@ dialog {
     border-color: #ddd !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Modo foco do leitor.
+
+   O atributo é marcado no <html> pela página da aula porque a barra lateral
+   vive no layout raiz, acima da rota — passar um sinal para cima acoplaria o
+   shell inteiro a uma página só. O padding do <main> volta a zero junto com a
+   barra, senão sobra uma faixa vazia de 240px.
+--------------------------------------------------------------------------- */
+:root[data-focus] aside,
+:root[data-focus] > body header.lg\:hidden {
+  display: none;
+}
+:root[data-focus] [data-shell-content] {
+  padding-left: 0 !important;
+}

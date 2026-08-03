@@ -200,7 +200,10 @@ export function AppShell({
         </nav>
       </header>
 
+      {/* O leitor esconde a barra lateral marcando o <html>; este gancho é o
+          que permite o padding acompanhar, sem o shell saber quem pediu. */}
       <div
+        data-shell-content
         className={`transition-[padding] duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-60"}`}
       >
         {children}

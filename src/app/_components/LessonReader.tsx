@@ -5,6 +5,8 @@ import { ChevronsDownUp, ChevronsUpDown, CornerDownLeft, X } from "lucide-react"
 import { saveReadingProgressAction } from "@/app/_actions/reading";
 import type { Heading } from "@/lib/headings";
 import { LessonContent } from "./LessonContent";
+import { ReaderSettings } from "./ReaderSettings";
+import { useReaderPrefs, surfaceStyle } from "./useReaderPrefs";
 
 /**
  * The reading shell for a lesson: index, position and progress.
@@ -45,6 +47,8 @@ export function LessonReader({
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [percent, setPercent] = useState(initialPercent);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const { prefs, update, reset } = useReaderPrefs();
+  const [focus, setFocus] = useState(false);
   const [showResume, setShowResume] = useState(
     Boolean(initialAnchor) &&
       initialPercent >= RESUME_MIN_PERCENT &&
@@ -230,6 +234,18 @@ export function LessonReader({
     };
   }, []);
 
+  /**
+   * Focus mode marks the document rather than lifting state into the shell:
+   * the sidebar lives in the root layout, above this route, and threading a
+   * flag up through it would couple the shell to one page.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (focus) root.setAttribute("data-focus", "");
+    else root.removeAttribute("data-focus");
+    return () => root.removeAttribute("data-focus");
+  }, [focus]);
+
   const jump = useCallback((slug: string) => {
     const el = document.getElementById(slug);
     if (!el) return;
@@ -279,6 +295,16 @@ export function LessonReader({
         aria-label="Progresso da leitura"
       />
 
+      <div className="mb-4 flex items-center justify-end">
+        <ReaderSettings
+          prefs={prefs}
+          update={update}
+          reset={reset}
+          focus={focus}
+          onToggleFocus={() => setFocus((v) => !v)}
+        />
+      </div>
+
       {showResume && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-profissional/30 bg-profissional-soft px-4 py-3">
           <CornerDownLeft size={16} className="shrink-0 text-profissional" />
@@ -309,12 +335,26 @@ export function LessonReader({
       )}
 
       <div className="flex gap-8">
-        <div ref={contentRef} className="min-w-0 flex-1">
+        <div
+          ref={contentRef}
+          className={`min-w-0 flex-1 rounded-xl transition-colors ${
+            prefs.family === "serif" ? "font-serif" : ""
+          } ${prefs.surface === "sistema" ? "" : "px-5 py-4"}`}
+          style={{
+            fontSize: `${prefs.fontSize}px`,
+            lineHeight: prefs.lineHeight,
+            // A medida do texto corrido é a preferência; tabela, código e
+            // diagrama continuam usando a largura toda.
+            ["--reader-measure" as string]: `${prefs.width}ch`,
+            ...surfaceStyle(prefs.surface),
+          }}
+        >
           <LessonContent
             content={content}
             sections
             collapsed={collapsed}
             onToggleSection={toggleSection}
+            style={surfaceStyle(prefs.surface)}
           />
         </div>
 
