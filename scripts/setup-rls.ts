@@ -19,6 +19,7 @@ const TENANT_TABLES = [
   "resume_profiles",
   "lessons",
   "notes",
+  "reading_progress",
   "exams",
   "exam_questions",
   "tutor_answers",

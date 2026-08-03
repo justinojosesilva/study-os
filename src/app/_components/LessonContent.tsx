@@ -3,9 +3,12 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import rehypeSlug from "rehype-slug";
 import "highlight.js/styles/github-dark.css";
 import { Mermaid } from "./Mermaid";
+import { ChevronRight } from "lucide-react";
 import { fixTabTables } from "@/lib/tab-tables";
+import { rehypeSections } from "@/lib/rehype-sections";
 
 function isMermaid(className: unknown): boolean {
   return typeof className === "string" && className.includes("language-mermaid");
@@ -41,9 +44,53 @@ const components: Components = {
   },
 };
 
+/**
+ * Section-aware variant of the component map. Built per render because the
+ * collapsed set changes; the plain map above stays a module constant for the
+ * note panels, which have no sections.
+ */
+function sectionComponents(
+  collapsed: ReadonlySet<string>,
+  onToggle: (slug: string) => void,
+): Components {
+  return {
+    ...components,
+    section({ children, ...props }) {
+      const slug = String((props as Record<string, unknown>)["data-slug"] ?? "");
+      const isCollapsed = collapsed.has(slug);
+      const kids = Array.isArray(children) ? children : [children];
+      // The heading always stays; only what follows it folds away.
+      const [heading, ...body] = kids;
+      return (
+        <section data-slug={slug} className="md-section">
+          <div className="group relative">
+            {heading}
+            <button
+              type="button"
+              onClick={() => onToggle(slug)}
+              aria-expanded={!isCollapsed}
+              aria-label={isCollapsed ? "Expandir seção" : "Recolher seção"}
+              className="absolute -left-6 top-1/2 hidden -translate-y-1/2 text-faint transition-colors hover:text-ink group-hover:block lg:block"
+            >
+              <ChevronRight
+                size={16}
+                className={`transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+              />
+            </button>
+          </div>
+          {!isCollapsed && body}
+        </section>
+      );
+    },
+  };
+}
+
 export function LessonContent({
   content,
   compact = false,
+  sections = false,
+  collapsed,
+  onToggleSection,
 }: {
   content: string;
   /**
@@ -53,7 +100,19 @@ export function LessonContent({
    * note skimmable in a box that scrolls.
    */
   compact?: boolean;
+  /** Group `h2` blocks into foldable sections. Only worth it for lessons. */
+  sections?: boolean;
+  collapsed?: ReadonlySet<string>;
+  onToggleSection?: (slug: string) => void;
 }) {
+  const rehype = sections
+    ? [rehypeHighlight, rehypeSlug, rehypeSections]
+    : [rehypeHighlight, rehypeSlug];
+  const map =
+    sections && collapsed && onToggleSection
+      ? sectionComponents(collapsed, onToggleSection)
+      : components;
+
   return (
     // O container segue a largura padrão das telas, mas o texto corrido tem
     // medida própria: a 1024px a linha chegava a 107 caracteres, contra os
@@ -68,8 +127,8 @@ export function LessonContent({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
-        components={components}
+        rehypePlugins={rehype}
+        components={map}
       >
         {fixTabTables(content)}
       </ReactMarkdown>

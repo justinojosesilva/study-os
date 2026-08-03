@@ -417,6 +417,42 @@ export const notes = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// reading_progress — where the reader stopped, per lesson.
+//
+// The measured lessons run to ~85k characters, about an hour of reading and
+// 80 screens of scrolling, so nobody finishes one in a sitting and reopening
+// at the top is a real cost.
+//
+// Position is an ANCHOR (a heading slug), not a scroll offset: font size and
+// column width are about to become adjustable, and every stored pixel would
+// point somewhere else the moment either changes. `percent` is kept alongside
+// only to draw the bar.
+//
+// Mutable state, not an event log — one row per lesson, updated in place.
+// ---------------------------------------------------------------------------
+
+export const readingProgress = pgTable(
+  "reading_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => lessons.id, { onDelete: "cascade" }),
+    anchorSlug: text("anchor_slug"),
+    percent: integer("percent").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One position per lesson: the upsert depends on this.
+    uniqueIndex("reading_progress_owner_lesson_idx").on(t.ownerId, t.lessonId),
+    index("reading_progress_owner_updated_idx").on(t.ownerId, t.updatedAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // certifications — a credential the user targets or holds (the "certify" step
 // of the plan→execute→review→certify→résumé journey). Mutable stateful entity
 // (like goals), NOT an event log. Optionally linked to the goal that studies
@@ -541,6 +577,7 @@ export type Certification = typeof certifications.$inferSelect;
 export type NewCertification = typeof certifications.$inferInsert;
 export type Lesson = typeof lessons.$inferSelect;
 export type NewLesson = typeof lessons.$inferInsert;
+export type ReadingProgress = typeof readingProgress.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 export type Exam = typeof exams.$inferSelect;

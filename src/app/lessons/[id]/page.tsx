@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { scoped } from "@/domain/auth";
 import { getLessonForReading } from "@/domain/lessons/repository";
+import { getProgress } from "@/domain/reading/repository";
+import { extractHeadings, readingMinutes } from "@/lib/headings";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
-import { LessonContent } from "@/app/_components/LessonContent";
+import { LessonReader } from "@/app/_components/LessonReader";
 import { FloatingSessionLogger } from "@/app/_components/FloatingSessionLogger";
 import { LessonDoneButton } from "@/app/_components/LessonDoneButton";
 
@@ -13,6 +15,13 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   return scoped(async (ownerId) => {
     const lesson = await getLessonForReading(ownerId, id);
     if (!lesson) notFound();
+
+    // Headings and reading time are derived from the markdown on the server:
+    // the client already has ~85k characters to render without also parsing
+    // them twice to build an index.
+    const [progress] = await Promise.all([getProgress(ownerId, id)]);
+    const headings = extractHeadings(lesson.content);
+    const minutes = readingMinutes(lesson.content);
 
     return (
       <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
@@ -27,7 +36,14 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
           {lesson.topicTitle}
         </p>
         <h1 className="mb-8 text-2xl font-medium tracking-tight">{lesson.title}</h1>
-        <LessonContent content={lesson.content} />
+        <LessonReader
+          lessonId={lesson.id}
+          content={lesson.content}
+          headings={headings}
+          minutes={minutes}
+          initialPercent={progress?.percent ?? 0}
+          initialAnchor={progress?.anchorSlug ?? null}
+        />
 
         <LessonDoneButton
           lessonId={lesson.id}

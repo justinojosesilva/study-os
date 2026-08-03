@@ -10,6 +10,7 @@ import { countDueCards } from "@/domain/reviews/repository";
 import { getGamification } from "@/domain/gamification";
 import { getUpcomingExam, type CertificationView } from "@/domain/certifications/repository";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
+import { continueReading } from "@/domain/reading/repository";
 import { CATEGORY } from "@/lib/categories";
 import { daysUntil, startOfWeek, addDays, toDateKey } from "@/lib/date";
 import { SessionLogger } from "./_components/SessionLogger";
@@ -18,6 +19,7 @@ import { GoalCard } from "./_components/GoalCard";
 import { Heatmap } from "./_components/Heatmap";
 import { WeeklyCard } from "./_components/WeeklyCard";
 import { LevelCard } from "./_components/LevelCard";
+import { ContinueReadingCard } from "./_components/ContinueReadingCard";
 import { StudyTrend } from "./_components/StudyTrend";
 import { EmptyState } from "./_components/EmptyState";
 
@@ -35,7 +37,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   return scoped(async (ownerId) => {
   const heatmapStart = addDays(startOfWeek(), -25 * 7);
-  const [data, topics, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan] =
+  const [data, topics, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan, reading] =
     await Promise.all([
       getDashboardData(ownerId),
       listTopicsForPicker(ownerId),
@@ -47,6 +49,7 @@ export default async function DashboardPage() {
       getGamification(ownerId),
       getUpcomingExam(ownerId),
       getWeekPlan(ownerId),
+      continueReading(ownerId),
     ]);
   const todayPlan = weekPlan.days[0];
 
@@ -105,6 +108,8 @@ export default async function DashboardPage() {
       {upcomingExam && <UpcomingExamCard exam={upcomingExam} />}
 
       {todayPlan.blocks.length > 0 && <TodayPlanCard day={todayPlan} />}
+
+      <ContinueReadingCard items={reading} />
 
       <LevelCard g={gamification} />
 
