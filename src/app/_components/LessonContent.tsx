@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import { Mermaid } from "./Mermaid";
+import { fixTabTables } from "@/lib/tab-tables";
 
 function isMermaid(className: unknown): boolean {
   return typeof className === "string" && className.includes("language-mermaid");
@@ -70,7 +71,7 @@ export function LessonContent({
         rehypePlugins={[rehypeHighlight]}
         components={components}
       >
-        {content}
+        {fixTabTables(content)}
       </ReactMarkdown>
     </div>
   );
