@@ -15,7 +15,11 @@ import { askTutor, type TutorMode, type TutorResult } from "@/domain/ai/tutor";
 import { createGoal, getGoalWithTopics } from "@/domain/goals/repository";
 import { createTopic } from "@/domain/topics/repository";
 import { getTopicContext } from "@/domain/flashcards/repository";
-import { listNotesForTopicWithContent } from "@/domain/notes/repository";
+import {
+  listNotesForTopicWithContent,
+  createNote,
+  deriveTitle,
+} from "@/domain/notes/repository";
 
 // AI actions read tenant context inside a short RLS-scoped transaction, then
 // call the model OUTSIDE it — we never hold a DB transaction open across the
@@ -52,10 +56,24 @@ export async function generateFlashcardsAction(
   });
 }
 
+/** Where the question was asked from, when it came out of a lesson passage. */
+export type TutorContext = {
+  lessonId: string;
+  anchorSlug: string | null;
+  quote: string;
+};
+
+const MODE_LABEL: Record<TutorMode, string> = {
+  explain: "Explicação",
+  exercises: "Exercícios",
+  summary: "Resumo",
+};
+
 export async function askTutorAction(
   topicId: string,
   mode: TutorMode,
   question?: string,
+  context?: TutorContext,
 ): Promise<TutorResult> {
   const ctx = await scoped(async (ownerId) => {
     const topic = await getTopicContext(ownerId, topicId);
@@ -67,29 +85,69 @@ export async function askTutorAction(
   });
   if (!ctx) return { ok: false, error: "Tópico não encontrado." };
 
+  const asked = question?.trim() || null;
+
+  // The passage is framed HERE, not by the caller. When the client sent an
+  // already-framed prompt, that whole preamble travelled as "the question" —
+  // the saved note ended up titled "Sobre este trecho da aula:" and carried the
+  // quote twice. The model gets the frame; the record keeps what was asked.
+  const prompt =
+    context?.quote && asked
+      ? `Sobre este trecho da aula:\n\n"${context.quote}"\n\n${asked}`
+      : context?.quote
+        ? `Sobre este trecho da aula:\n\n"${context.quote}"\n\nExplique este trecho.`
+        : asked ?? undefined;
+
   // Read context in a short scoped transaction, call the AI outside it, then
   // write back — the model call is slow and must not hold a DB transaction.
   const res = await askTutor({
     topicTitle: ctx.topicTitle,
     goalTitle: ctx.goalTitle,
     mode,
-    question,
+    question: prompt,
     notes: ctx.notes,
   });
 
   if (res.ok) {
-    // Kept as study material for the topic quiz. A failure to store must not
-    // cost the user the answer they already have on screen.
+    // Two destinations, on purpose. `tutor_answers` is the quiz's raw material
+    // and stays a flat log. The note is the readable artifact: it shows up in
+    // the topic's notes, in the search, and can be edited afterwards — which is
+    // what makes a resolved doubt reusable instead of a message that scrolled
+    // away. A failure to store must not cost the answer already on screen.
     try {
-      await scoped((ownerId) =>
-        saveTutorAnswer({
+      await scoped(async (ownerId) => {
+        await saveTutorAnswer({ ownerId, topicId, mode, question: asked, answer: res.text });
+
+        const parts: string[] = [];
+        if (context?.quote) {
+          parts.push(
+            context.quote
+              .split("\n")
+              .map((l) => `> ${l}`)
+              .join("\n"),
+            "",
+          );
+        }
+        parts.push(
+          `**Pergunta ao tutor.** ${asked ?? (context?.quote ? "Explique este trecho." : MODE_LABEL[mode])}`,
+          "",
+          res.text,
+        );
+
+        await createNote({
           ownerId,
           topicId,
-          mode,
-          question: question?.trim() || null,
-          answer: res.text,
-        }),
-      );
+          lessonId: context?.lessonId ?? null,
+          anchorSlug: context?.anchorSlug ?? null,
+          quote: context?.quote ?? null,
+          // The question titles the note; without one, the mode does. Either
+          // way the title says what was asked, not what was answered.
+          title: deriveTitle(asked ?? `${MODE_LABEL[mode]} · ${ctx.topicTitle}`),
+          content: parts.join("\n"),
+        });
+      });
+      revalidatePath("/notes");
+      if (context?.lessonId) revalidatePath(`/lessons/${context.lessonId}`);
     } catch (err) {
       console.error("tutor-save error", err);
     }

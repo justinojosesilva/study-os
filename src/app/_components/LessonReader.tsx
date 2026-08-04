@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronsDownUp, ChevronsUpDown, CornerDownLeft, X } from "lucide-react";
+import {
+  ChevronsDownUp,
+  ChevronsUpDown,
+  CornerDownLeft,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
+} from "lucide-react";
 import { saveReadingProgressAction } from "@/app/_actions/reading";
 import type { Heading } from "@/lib/headings";
 import type { LessonNote as LessonNoteItem } from "@/domain/notes/repository";
@@ -10,6 +17,7 @@ import { ReaderSettings } from "./ReaderSettings";
 import { SelectionTools } from "./SelectionTools";
 import { LessonNotes } from "./LessonNotes";
 import { useReaderPrefs, surfaceStyle } from "./useReaderPrefs";
+import { useFocusMode } from "./useFocusMode";
 
 /**
  * The reading shell for a lesson: index, position and progress.
@@ -57,7 +65,7 @@ export function LessonReader({
   const [percent, setPercent] = useState(initialPercent);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const { prefs, update, reset } = useReaderPrefs();
-  const [focus, setFocus] = useState(false);
+  const { focus, toggle: toggleFocus } = useFocusMode();
   const [showResume, setShowResume] = useState(
     Boolean(initialAnchor) &&
       initialPercent >= RESUME_MIN_PERCENT &&
@@ -138,8 +146,6 @@ export function LessonReader({
     // the previous offsets said. That is how the same scroll position reported
     // three different sections across three samples.
     syncActive();
-
-
   }, [syncActive]);
 
   useEffect(() => {
@@ -173,7 +179,9 @@ export function LessonReader({
 
   useEffect(() => {
     let frame = 0;
-    const update = () => {
+    // Named `tick`, not `update`: `update` here is the preferences setter from
+    // useReaderPrefs, and shadowing it inside the effect reads as a bug.
+    const tick = () => {
       frame = 0;
       const max = document.documentElement.scrollHeight - window.innerHeight;
       setPercent(max <= 0 ? 100 : Math.round((window.scrollY / max) * 100));
@@ -181,9 +189,9 @@ export function LessonReader({
     };
     const onScroll = () => {
       if (frame) return;
-      frame = requestAnimationFrame(update);
+      frame = requestAnimationFrame(tick);
     };
-    update();
+    tick();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
@@ -243,18 +251,6 @@ export function LessonReader({
     };
   }, []);
 
-  /**
-   * Focus mode marks the document rather than lifting state into the shell:
-   * the sidebar lives in the root layout, above this route, and threading a
-   * flag up through it would couple the shell to one page.
-   */
-  useEffect(() => {
-    const root = document.documentElement;
-    if (focus) root.setAttribute("data-focus", "");
-    else root.removeAttribute("data-focus");
-    return () => root.removeAttribute("data-focus");
-  }, [focus]);
-
   const jump = useCallback((slug: string) => {
     const el = document.getElementById(slug);
     if (!el) return;
@@ -310,7 +306,7 @@ export function LessonReader({
           update={update}
           reset={reset}
           focus={focus}
-          onToggleFocus={() => setFocus((v) => !v)}
+          onToggleFocus={toggleFocus}
         />
       </div>
 
@@ -344,26 +340,32 @@ export function LessonReader({
       )}
 
       <div className="flex gap-8">
+        {/* O wrapper carrega só o que se herda ou se pinta: família, fundo e
+            respiro. Tamanho e entrelinha TÊM de ir no próprio `.prose` —
+            Typography declara `font-size: 1rem; line-height: 1.75` naquele
+            elemento, então um valor no pai é simplesmente ignorado. Foi assim
+            que os dois controles ficaram inertes sem eu perceber: a conferência
+            mediu o wrapper, que é onde eu escrevia, e não o texto. */}
         <div
           ref={contentRef}
           className={`relative min-w-0 flex-1 rounded-xl transition-colors ${
             prefs.family === "serif" ? "font-serif" : ""
           } ${prefs.surface === "sistema" ? "" : "px-5 py-4"}`}
-          style={{
-            fontSize: `${prefs.fontSize}px`,
-            lineHeight: prefs.lineHeight,
-            // A medida do texto corrido é a preferência; tabela, código e
-            // diagrama continuam usando a largura toda.
-            ["--reader-measure" as string]: `${prefs.width}ch`,
-            ...surfaceStyle(prefs.surface),
-          }}
+          style={surfaceStyle(prefs.surface)}
         >
           <LessonContent
             content={content}
             sections
             collapsed={collapsed}
             onToggleSection={toggleSection}
-            style={surfaceStyle(prefs.surface)}
+            style={{
+              fontSize: `${prefs.fontSize}px`,
+              lineHeight: prefs.lineHeight,
+              // A medida do texto corrido é a preferência; tabela, código e
+              // diagrama continuam usando a largura toda.
+              ["--reader-measure" as string]: `${prefs.width}ch`,
+              ...surfaceStyle(prefs.surface),
+            }}
           />
           <SelectionTools
             lessonId={lessonId}
@@ -376,6 +378,8 @@ export function LessonReader({
 
         {headings.length >= 4 && (
           <Toc
+            open={prefs.tocOpen}
+            onToggleOpen={() => update({ tocOpen: !prefs.tocOpen })}
             headings={headings}
             activeSlug={activeSlug}
             onJump={jump}
@@ -397,6 +401,8 @@ export function LessonReader({
  * first one.
  */
 function Toc({
+  open,
+  onToggleOpen,
   headings,
   activeSlug,
   onJump,
@@ -406,6 +412,8 @@ function Toc({
   allCollapsed,
   onToggleAll,
 }: {
+  open: boolean;
+  onToggleOpen: () => void;
   headings: Heading[];
   activeSlug: string | null;
   onJump: (slug: string) => void;
@@ -439,6 +447,31 @@ function Toc({
     return out.filter((h) => h.show);
   }, [headings, activeSection]);
 
+  // Collapsed, the index keeps a rail rather than disappearing: the reader
+  // still needs the percentage and a way back, and a control that vanishes
+  // completely is one the user has to hunt for.
+  if (!open) {
+    return (
+      <nav
+        aria-label="Índice da aula"
+        className="sticky top-8 hidden h-[calc(100vh-6rem)] w-9 shrink-0 flex-col items-center gap-3 xl:flex"
+      >
+        <button
+          type="button"
+          onClick={onToggleOpen}
+          aria-label="Mostrar índice da aula"
+          aria-expanded={false}
+          className="tip tip-left rounded-lg p-1.5 text-faint transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <PanelRightOpen size={16} />
+        </button>
+        <span className="text-[11px] tabular-nums text-faint [writing-mode:vertical-rl]">
+          {percent}%
+        </span>
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Índice da aula"
@@ -448,14 +481,25 @@ function Toc({
         <span className="text-xs font-medium text-muted">
           {percent}% · {remaining > 0 ? `${remaining} min restantes` : "no fim"}
         </span>
-        <button
-          type="button"
-          onClick={onToggleAll}
-          aria-label={allCollapsed ? "Expandir todas as seções" : "Recolher todas as seções"}
-          className="tip tip-left text-faint transition-colors hover:text-ink"
-        >
-          {allCollapsed ? <ChevronsUpDown size={15} /> : <ChevronsDownUp size={15} />}
-        </button>
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onToggleAll}
+            aria-label={allCollapsed ? "Expandir todas as seções" : "Recolher todas as seções"}
+            className="tip text-faint transition-colors hover:text-ink"
+          >
+            {allCollapsed ? <ChevronsUpDown size={15} /> : <ChevronsDownUp size={15} />}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleOpen}
+            aria-label="Ocultar índice da aula"
+            aria-expanded
+            className="tip tip-left text-faint transition-colors hover:text-ink"
+          >
+            <PanelRightClose size={15} />
+          </button>
+        </span>
       </div>
       <p className="mb-3 text-[11px] text-faint">leitura estimada em {minutes} min</p>
 

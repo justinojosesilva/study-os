@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Pencil, Eye, Save, Trash2, X, ArrowRight } from "lucide-react";
 import { updateNoteAction, deleteNoteAction } from "@/app/_actions/notes";
 import { LessonContent } from "./LessonContent";
+import { ReaderSettings } from "./ReaderSettings";
+import { useReaderPrefs, surfaceStyle } from "./useReaderPrefs";
+import { useFocusMode } from "./useFocusMode";
 
 /**
  * Read-first, edit on demand.
@@ -36,6 +39,10 @@ export function NoteEditor({
   const [error, setError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
   const [removing, startRemove] = useTransition();
+  // A anotação é lida com os mesmos olhos que a aula, então herda as mesmas
+  // preferências — inclusive as que o usuário já ajustou lendo uma aula.
+  const { prefs, update, reset } = useReaderPrefs();
+  const { focus, toggle: toggleFocus } = useFocusMode();
 
   function save() {
     setError(null);
@@ -71,7 +78,7 @@ export function NoteEditor({
   if (!editing) {
     return (
       <>
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -87,10 +94,34 @@ export function NoteEditor({
           >
             <Trash2 size={14} /> Remover
           </button>
+          <span className="ml-auto">
+            <ReaderSettings
+              prefs={prefs}
+              update={update}
+              reset={reset}
+              focus={focus}
+              onToggleFocus={toggleFocus}
+            />
+          </span>
         </div>
 
         {initialNextStep && <NextStepCard text={initialNextStep} />}
-        <LessonContent content={initialContent} />
+        <div
+          className={`rounded-xl transition-colors ${prefs.family === "serif" ? "font-serif" : ""} ${
+            prefs.surface === "sistema" ? "" : "px-5 py-4"
+          }`}
+          style={surfaceStyle(prefs.surface)}
+        >
+          <LessonContent
+            content={initialContent}
+            style={{
+              fontSize: `${prefs.fontSize}px`,
+              lineHeight: prefs.lineHeight,
+              ["--reader-measure" as string]: `${prefs.width}ch`,
+              ...surfaceStyle(prefs.surface),
+            }}
+          />
+        </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </>
     );

@@ -20,6 +20,8 @@ export type ReaderPrefs = {
   width: number; // ch, applied to prose paragraphs
   family: Family;
   surface: Surface;
+  /** Índice da aula aberto. Fica aqui para sobreviver ao recarregamento. */
+  tocOpen: boolean;
 };
 
 export const DEFAULT_PREFS: ReaderPrefs = {
@@ -29,6 +31,7 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   width: 68,
   family: "sans",
   surface: "sistema",
+  tocOpen: true,
 };
 
 export const LIMITS = {
@@ -52,6 +55,7 @@ function sanitize(raw: unknown): ReaderPrefs {
     width: clamp(Number(r.width) || DEFAULT_PREFS.width, LIMITS.width.min, LIMITS.width.max),
     family: r.family === "serif" ? "serif" : "sans",
     surface: r.surface === "papel" || r.surface === "sepia" ? r.surface : "sistema",
+    tocOpen: r.tocOpen !== false,
   };
 }
 

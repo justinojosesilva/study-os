@@ -135,7 +135,17 @@ export function SelectionTools({
       )}
 
       {mode === "tutor" && (
-        <TutorOnPassage topicId={topicId} quote={picked.text} onClose={clear} />
+        <TutorOnPassage
+          topicId={topicId}
+          lessonId={lessonId}
+          anchorSlug={picked.anchorSlug}
+          quote={picked.text}
+          onClose={() => {
+            clear();
+            // A resposta virou anotação; a lista no fim da aula tem de saber.
+            router.refresh();
+          }}
+        />
       )}
 
       {mode === "cards" && (
@@ -263,10 +273,14 @@ function NoteComposer({
 
 function TutorOnPassage({
   topicId,
+  lessonId,
+  anchorSlug,
   quote,
   onClose,
 }: {
   topicId: string;
+  lessonId: string;
+  anchorSlug: string | null;
   quote: string;
   onClose: () => void;
 }) {
@@ -278,12 +292,14 @@ function TutorOnPassage({
   async function ask() {
     setPending(true);
     setError(null);
-    // The passage travels with the question so the tutor answers about THIS
-    // paragraph, not about the topic in general.
-    const framed = `Sobre este trecho da aula:\n\n"${quote}"\n\n${
-      question.trim() || "Explique este trecho."
-    }`;
-    const res = await askTutorAction(topicId, "explain", framed);
+    // Only the raw question travels. The passage goes in the context, and the
+    // action frames the prompt — otherwise the frame becomes the question of
+    // record and titles the saved note.
+    const res = await askTutorAction(topicId, "explain", question.trim() || undefined, {
+      lessonId,
+      anchorSlug,
+      quote,
+    });
     if (res.ok) setAnswer(res.text);
     else setError(res.error);
     setPending(false);
