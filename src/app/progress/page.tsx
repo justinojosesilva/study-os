@@ -10,6 +10,7 @@ import {
   BookOpen,
   Layers,
   Lock,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { scoped } from "@/domain/auth";
@@ -62,6 +63,19 @@ export default async function ProgressPage({
     <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
       <Breadcrumbs items={[{ label: "Dashboard", href: "/" }, { label: "Progresso" }]} />
 
+      {/* O h1 é da PÁGINA, não da aba. Ele vivia dentro do ramo `showGame`, e
+          a aba padrão (Desempenho) renderizava zero h1 — para leitor de tela a
+          página não tinha título. O título de nível vira h2 dentro do painel. */}
+      <h1 className="mb-1 flex items-center gap-2 text-xl font-medium">
+        <Trophy size={20} className="text-certificacao" />
+        Progresso
+      </h1>
+      <p className="mb-5 text-sm text-muted">
+        {showGame
+          ? "XP, nível e conquistas acumulados."
+          : "Se o estudo está funcionando: notas, retenção e calibragem."}
+      </p>
+
       <nav className="mb-6 flex gap-1 border-b border-line">
         <Tab href="/progress" active={!showGame} label="Desempenho" />
         <Tab href="/progress?aba=xp" active={showGame} label="XP e conquistas" />
@@ -84,7 +98,7 @@ export default async function ProgressPage({
           <span className="text-2xl font-medium leading-tight tabular-nums">{g.level}</span>
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-medium">{g.title}</h1>
+          <h2 className="text-xl font-medium">{g.title}</h2>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-2">
             <div className="h-full bg-certificacao" style={{ width: `${g.progressPct}%` }} />
           </div>

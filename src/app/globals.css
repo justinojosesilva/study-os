@@ -7,17 +7,26 @@
   --surface-2: #f5f5f4;
   --line: #e7e5e4;
   --ink: #1c1917;
-  --muted: #78716c;
-  --faint: #8c857f; /* WCAG: darkened from #a8a29e (2.4:1) to clear the 3:1 UI/text floor */
+  /* Contraste medido contra a pior superfície do tema (--surface-2), não
+     contra o canvas: é lá que o texto pequeno reprova primeiro.
+     muted 4.40 -> 7.03 · faint 3.33 -> 4.67, ambos agora em AA (4.5) para
+     texto normal. A calibragem anterior mirava o piso de 3:1 de ELEMENTOS de
+     UI, correto para ícone e borda e insuficiente para os 47 usos em texto de
+     11-12px. Os dois alvos são separados de propósito: empurrar ambos para
+     4.5 num fundo quase branco funde os dois níveis numa cor só.
+     O pior fundo NÃO é --surface-2: são os chips -soft de categoria, mais
+     claros que ele. Medir só contra surface-2 deixava "28min" em 4.48. */
+  --muted: #59524d;
+  --faint: #706963;
 
-  --profissional: #1d6fc4;
+  --profissional: #1c6dc0; /* 4.45 -> 4.59 sobre --profissional-soft */
   --profissional-soft: #e6f1fb;
   --faculdade: #0f7a5a;
   --faculdade-soft: #e1f5ee;
   --certificacao: #6d44c4;
   --certificacao-soft: #efeafe;
 
-  --warning: #b4690e;
+  --warning: #a6610d; /* 4.05 -> 4.64 sobre --canvas; é usado como texto */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,8 +36,8 @@
     --surface-2: #262320;
     --line: #2c2825;
     --ink: #fafaf9;
-    --muted: #a8a29e;
-    --faint: #87817b; /* WCAG: lightened from #78716c (3.65:1) to reach AA text on dark */
+    --muted: #a8a29e; /* 6.20 sobre --surface-2: já passa, fica como está */
+    --faint: #938d87; /* 4.06 -> 4.60 no pior par (chips -soft) */
 
     --profissional: #6aa9e9;
     --profissional-soft: #122740;
