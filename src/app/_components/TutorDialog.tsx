@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Lightbulb, X, Send } from "lucide-react";
 import { askTutorAction } from "@/app/_actions/ai";
+import { SaveTutorNote } from "./SaveTutorNote";
 import type { TutorMode } from "@/domain/ai/tutor";
 import { SkeletonBlock, SkeletonText } from "./Skeleton";
 
@@ -22,6 +23,9 @@ export function TutorDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [question, setQuestion] = useState("");
   const [text, setText] = useState<string | null>(null);
+  // O que produziu a resposta na tela. A caixa de pergunta continua editável
+  // depois de responder, então lê-la na hora de salvar gravaria outra coisa.
+  const [answered, setAnswered] = useState<{ mode: TutorMode; question: string | null } | null>(null);
   const [mocked, setMocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,10 +33,12 @@ export function TutorDialog({
   function ask(mode: TutorMode, q?: string) {
     setError(null);
     setText(null);
+    setAnswered(null);
     startTransition(async () => {
       const res = await askTutorAction(topicId, mode, q);
       if (res.ok) {
         setText(res.text);
+        setAnswered({ mode, question: q?.trim() || null });
         setMocked(res.mocked);
       } else {
         setError(res.error);
@@ -122,6 +128,14 @@ export function TutorDialog({
                   </p>
                 )}
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p>
+                {answered && (
+                  <SaveTutorNote
+                    topicId={topicId}
+                    mode={answered.mode}
+                    question={answered.question}
+                    answer={text}
+                  />
+                )}
               </div>
             )}
             {!pending && !text && !error && (

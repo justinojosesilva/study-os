@@ -109,51 +109,80 @@ export async function askTutorAction(
   });
 
   if (res.ok) {
-    // Two destinations, on purpose. `tutor_answers` is the quiz's raw material
-    // and stays a flat log. The note is the readable artifact: it shows up in
-    // the topic's notes, in the search, and can be edited afterwards — which is
-    // what makes a resolved doubt reusable instead of a message that scrolled
-    // away. A failure to store must not cost the answer already on screen.
+    // Only the flat log is written here — it is the quiz's raw material and
+    // costs nothing. Turning the answer into a NOTE is deliberate, on a button:
+    // the tutor gets asked casually, and filing every passing question would
+    // bury the syntheses that were written on purpose.
     try {
-      await scoped(async (ownerId) => {
-        await saveTutorAnswer({ ownerId, topicId, mode, question: asked, answer: res.text });
-
-        const parts: string[] = [];
-        if (context?.quote) {
-          parts.push(
-            context.quote
-              .split("\n")
-              .map((l) => `> ${l}`)
-              .join("\n"),
-            "",
-          );
-        }
-        parts.push(
-          `**Pergunta ao tutor.** ${asked ?? (context?.quote ? "Explique este trecho." : MODE_LABEL[mode])}`,
-          "",
-          res.text,
-        );
-
-        await createNote({
-          ownerId,
-          topicId,
-          lessonId: context?.lessonId ?? null,
-          anchorSlug: context?.anchorSlug ?? null,
-          quote: context?.quote ?? null,
-          // The question titles the note; without one, the mode does. Either
-          // way the title says what was asked, not what was answered.
-          title: deriveTitle(asked ?? `${MODE_LABEL[mode]} · ${ctx.topicTitle}`),
-          content: parts.join("\n"),
-        });
-      });
-      revalidatePath("/notes");
-      if (context?.lessonId) revalidatePath(`/lessons/${context.lessonId}`);
+      await scoped((ownerId) =>
+        saveTutorAnswer({ ownerId, topicId, mode, question: asked, answer: res.text }),
+      );
     } catch (err) {
       console.error("tutor-save error", err);
     }
   }
 
   return res;
+}
+
+export type SaveTutorNoteResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string };
+
+/**
+ * Files a tutor answer as a note, on demand.
+ *
+ * The note is the readable artifact — it shows up in the topic's notes, in the
+ * search, feeds the quiz as authored material, and can be edited. The answer
+ * itself is already in `tutor_answers`; this is the copy the reader keeps.
+ */
+export async function saveTutorNoteAction(input: {
+  topicId: string;
+  mode: TutorMode;
+  question: string | null;
+  answer: string;
+  context?: TutorContext;
+}): Promise<SaveTutorNoteResult> {
+  const { topicId, mode, answer, context } = input;
+  const asked = input.question?.trim() || null;
+  if (!answer.trim()) return { ok: false, error: "Nada para salvar." };
+
+  return scoped(async (ownerId) => {
+    const topic = await getTopicContext(ownerId, topicId);
+    if (!topic) return { ok: false, error: "Tópico não encontrado." };
+
+    const parts: string[] = [];
+    if (context?.quote) {
+      parts.push(
+        context.quote
+          .split("\n")
+          .map((l) => `> ${l}`)
+          .join("\n"),
+        "",
+      );
+    }
+    parts.push(
+      `**Pergunta ao tutor.** ${asked ?? (context?.quote ? "Explique este trecho." : MODE_LABEL[mode])}`,
+      "",
+      answer.trim(),
+    );
+
+    const row = await createNote({
+      ownerId,
+      topicId,
+      lessonId: context?.lessonId ?? null,
+      anchorSlug: context?.anchorSlug ?? null,
+      quote: context?.quote ?? null,
+      // The question titles the note; without one, the mode does. Either way
+      // the title says what was asked, not what was answered.
+      title: deriveTitle(asked ?? `${MODE_LABEL[mode]} · ${topic.topicTitle}`),
+      content: parts.join("\n"),
+    });
+
+    revalidatePath("/notes");
+    if (context?.lessonId) revalidatePath(`/lessons/${context.lessonId}`);
+    return { ok: true, id: row.id };
+  });
 }
 
 export type AdoptResult = { ok: true; goalId: string } | { ok: false; error: string };

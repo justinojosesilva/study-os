@@ -8,6 +8,7 @@ import { askTutorAction } from "@/app/_actions/ai";
 import { generateFlashcardsAction } from "@/app/_actions/ai";
 import { createFlashcardAction } from "@/app/_actions/flashcards";
 import { SkeletonText } from "./Skeleton";
+import { SaveTutorNote } from "./SaveTutorNote";
 
 /**
  * What you can do with a passage you just selected: annotate it, ask the tutor
@@ -335,7 +336,16 @@ function TutorOnPassage({
           )}
         </>
       ) : (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">{answer}</p>
+        <>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{answer}</p>
+          <SaveTutorNote
+            topicId={topicId}
+            mode="explain"
+            question={question.trim() || null}
+            answer={answer}
+            context={{ lessonId, anchorSlug, quote }}
+          />
+        </>
       )}
     </Shell>
   );
