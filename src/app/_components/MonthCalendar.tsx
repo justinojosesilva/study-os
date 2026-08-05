@@ -3,12 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, X, Check } from "lucide-react";
-import { SessionLogger } from "./SessionLogger";
+import { StartBlockButton } from "./SessionLauncher";
 import { SessionNote } from "./SessionNote";
 import { NextStepHint } from "./NextStepHint";
 import type { NextStep } from "@/domain/notes/repository";
 import { formatTime } from "@/lib/date";
-import type { PickerTopic } from "@/domain/topics/repository";
 
 export type CalBlock = {
   kind: "review" | "topic";
@@ -59,14 +58,12 @@ export function MonthCalendar({
   cells,
   planByDate,
   pastByDate,
-  topics,
   nextSteps,
 }: {
   monthLabel: string;
   cells: DayCell[];
   planByDate: Record<string, CalBlock[]>;
   pastByDate: Record<string, PastSession[]>;
-  topics: PickerTopic[];
   nextSteps: Map<string, NextStep>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -190,13 +187,7 @@ export function MonthCalendar({
                           {b.goalTitle && <p className="truncate text-xs text-muted">{b.goalTitle}</p>}
                           {b.topicId && <NextStepHint step={nextSteps.get(b.topicId)} />}
                         </div>
-                        <SessionLogger
-                          topics={topics}
-                          initialTopicId={b.topicId}
-                          initialMinutes={b.minutes}
-                          triggerLabel="Iniciar"
-                          triggerClassName="press inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
-                        />
+                        <StartBlockButton topicId={b.topicId} minutes={b.minutes} />
                       </li>
                     ),
                   )}

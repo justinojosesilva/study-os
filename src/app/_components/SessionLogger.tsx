@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Play, Pause, RotateCcw, X, Timer, Coffee, SkipForward } from "lucide-react";
 import { logStudySession } from "@/app/_actions/sessions";
 import { useStudyTimer, MODES, fmtClock } from "./useStudyTimer";
@@ -15,15 +15,24 @@ export function SessionLogger({
   initialMinutes,
   triggerLabel = "Iniciar sessão",
   triggerClassName,
+  autoOpen = false,
+  hideTrigger = false,
+  onDismiss,
 }: {
   topics: PickerTopic[];
   initialTopicId?: string;
   initialMinutes?: number;
   triggerLabel?: string;
   triggerClassName?: string;
+  /** Abre sozinho ao montar — usado pelo lançador único da agenda, que monta
+   *  uma instância nova por bloco clicado em vez de manter 27 vivas. */
+  autoOpen?: boolean;
+  hideTrigger?: boolean;
+  onDismiss?: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const timer = useStudyTimer(initialMinutes);
+  const openedOnce = useRef(false);
   const [manualDuration, setManualDuration] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -53,6 +62,14 @@ export function SessionLogger({
   const durationMin = manualDuration ?? suggested;
   const resting = timer.phase === "break";
 
+  // Uma instância nova é montada por bloco lançado, então abrir na montagem é
+  // o suficiente — não há estado antigo para reaproveitar.
+  useEffect(() => {
+    if (!autoOpen || openedOnce.current) return;
+    openedOnce.current = true;
+    dialogRef.current?.showModal();
+  }, [autoOpen]);
+
   function close() {
     timer.reset();
     setManualDuration(null);
@@ -74,18 +91,21 @@ export function SessionLogger({
 
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        className={
-          triggerClassName ??
-          "inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
-        }
-      >
-        <Play size={16} /> {triggerLabel}
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => dialogRef.current?.showModal()}
+          className={
+            triggerClassName ??
+            "inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
+          }
+        >
+          <Play size={16} /> {triggerLabel}
+        </button>
+      )}
 
       <dialog
         ref={dialogRef}
+        onClose={onDismiss}
         aria-label="Iniciar sessão de estudo"
         className="m-auto max-h-[92vh] w-[min(92vw,460px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >

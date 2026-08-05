@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { CalendarDays, RefreshCw, Play, Check } from "lucide-react";
+import { CalendarDays, RefreshCw, Check } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { getAvailability } from "@/domain/user/repository";
-import { listTopicsForPicker, type PickerTopic } from "@/domain/topics/repository";
+import { listTopicsForPicker } from "@/domain/topics/repository";
 import { listSessionsBetween } from "@/domain/sessions/repository";
 import {
   listNotesBySessions,
@@ -13,7 +13,10 @@ import {
 import { toDateKey, addDays, startOfToday, formatTime } from "@/lib/date";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { AvailabilitySettings } from "@/app/_components/AvailabilitySettings";
-import { SessionLogger } from "@/app/_components/SessionLogger";
+import {
+  SessionLauncherProvider,
+  StartBlockButton,
+} from "@/app/_components/SessionLauncher";
 import { SessionNote } from "@/app/_components/SessionNote";
 import { NextStepHint } from "@/app/_components/NextStepHint";
 import { WeekStrategy } from "@/app/_components/WeekStrategy";
@@ -130,7 +133,9 @@ export default async function AgendaPage() {
             hint="Crie objetivos com tópicos (ou flashcards para revisar) e a agenda monta seu plano da semana automaticamente."
           />
         ) : (
-          <>
+          // Um único diálogo de sessão para a página inteira. Cada bloco pedia
+          // o seu: 27 instâncias numa semana normal.
+          <SessionLauncherProvider topics={topics}>
             {hasAnyBlocks && <WeekStrategy />}
 
             {/* Desktop: month calendar; click a day for its panels. */}
@@ -140,7 +145,6 @@ export default async function AgendaPage() {
                 cells={cells}
                 planByDate={planByDate}
                 pastByDate={pastByDate}
-                topics={topics}
                 nextSteps={nextSteps}
               />
             </div>
@@ -150,18 +154,13 @@ export default async function AgendaPage() {
                 on desktop it lives inside each day of the calendar. */}
             <div className="flex flex-col gap-3 lg:hidden">
               {plan.days.map((day) => (
-                <DayCard
-                  key={day.date.toISOString()}
-                  day={day}
-                  topics={topics}
-                  nextSteps={nextSteps}
-                />
+                <DayCard key={day.date.toISOString()} day={day} nextSteps={nextSteps} />
               ))}
               {hasPast && (
                 <RecentHistory sessions={monthSessions} noteBySession={noteBySession} />
               )}
             </div>
-          </>
+          </SessionLauncherProvider>
         )}
       </main>
     );
@@ -239,15 +238,7 @@ function dayLabelFromKey(key: string): string {
   return `${WEEKDAY[date.getDay()]} · ${d}/${MONTHS_SHORT[m - 1]}`;
 }
 
-function DayCard({
-  day,
-  topics,
-  nextSteps,
-}: {
-  day: PlanDay;
-  topics: PickerTopic[];
-  nextSteps: Map<string, NextStep>;
-}) {
+function DayCard({ day, nextSteps }: { day: PlanDay; nextSteps: Map<string, NextStep> }) {
   const label = `${WEEKDAY[day.date.getDay()]} · ${day.date.getDate()}/${MONTHS_SHORT[day.date.getMonth()]}`;
   const fillPct = day.availableMin > 0 ? Math.round((day.plannedMin / day.availableMin) * 100) : 0;
 
@@ -311,13 +302,7 @@ function DayCard({
                   {block.goalTitle && <p className="truncate text-xs text-muted">{block.goalTitle}</p>}
                   {block.topicId && <NextStepHint step={nextSteps.get(block.topicId)} />}
                 </div>
-                <SessionLogger
-                  topics={topics}
-                  initialTopicId={block.topicId}
-                  initialMinutes={block.minutes}
-                  triggerLabel="Iniciar"
-                  triggerClassName="press inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
-                />
+                <StartBlockButton topicId={block.topicId} minutes={block.minutes} />
               </li>
             ),
           )}

@@ -5,7 +5,11 @@
   --canvas: #fafaf9;
   --surface: #ffffff;
   --surface-2: #f5f5f4;
-  --line: #e7e5e4;
+  /* 1.15 -> 1.91 no pior par. O alvo NÃO é os 3:1 de limite de componente:
+     a borda não é o único indicador (o fundo do card já difere) e 3:1 num
+     tema escuro vira um traço que compete com o texto. ~1.9 é onde a borda
+     se percebe sem virar protagonista. */
+  --line: #b5b3b2;
   --ink: #1c1917;
   /* Contraste medido contra a pior superfície do tema (--surface-2), não
      contra o canvas: é lá que o texto pequeno reprova primeiro.
@@ -34,7 +38,7 @@
     --canvas: #0c0a09;
     --surface: #1c1917;
     --surface-2: #262320;
-    --line: #2c2825;
+    --line: #534f4c; /* 1.07 -> 1.93 no pior par */
     --ink: #fafaf9;
     --muted: #a8a29e; /* 6.20 sobre --surface-2: já passa, fica como está */
     --faint: #938d87; /* 4.06 -> 4.60 no pior par (chips -soft) */
