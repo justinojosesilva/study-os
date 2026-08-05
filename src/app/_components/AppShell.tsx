@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -16,6 +16,8 @@ import {
   Target,
   PanelLeftClose,
   PanelLeftOpen,
+  MoreHorizontal,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -65,6 +67,21 @@ const SECTIONS: NavSection[] = [
 ];
 
 const ALL_ITEMS = SECTIONS.flatMap((s) => s.items);
+
+/**
+ * The five destinations the mobile bar carries, with labels.
+ *
+ * The old bar held all ten as 36px icon-only links in a strip that already
+ * scrolled sideways — under the 44px touch minimum, and icon-only navigation
+ * is the classic discoverability trap. Five labelled items fit a 375px screen;
+ * the rest live behind "Mais".
+ *
+ * Chosen by what the daily loop needs: study, plan, review, write, and the
+ * goals they all hang off.
+ */
+const MOBILE_PRIMARY = ["/", "/agenda", "/review", "/notes", "/goals"];
+const PRIMARY_ITEMS = MOBILE_PRIMARY.map((href) => ALL_ITEMS.find((i) => i.href === href)!);
+const OVERFLOW_ITEMS = ALL_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i.href));
 
 /**
  * Global app shell: a persistent left sidebar on desktop (≥lg) grouped into
@@ -169,36 +186,19 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Mobile top bar */}
+      {/* Mobile: título em cima, navegação embaixo — o polegar alcança a
+          barra inferior, e o topo fica para identidade e conta. */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-surface/85 px-4 py-2.5 backdrop-blur lg:hidden">
         <Link href="/" aria-label="Study OS · início" className="flex shrink-0 items-center gap-2">
           <span className="flex size-7 items-center justify-center rounded-lg bg-ink text-canvas">
             <Target size={15} />
           </span>
+          <span className="text-sm font-medium">Study OS</span>
         </Link>
-        {/* Scrolls horizontally: the icon row is fixed-width per item, so on a
-            375px phone the full set would otherwise overflow the header. */}
-        <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {ALL_ITEMS.map((item) => {
-            const active = item.match(pathname);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-                className={`press flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                  active ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                <Icon size={18} />
-              </Link>
-            );
-          })}
-          <span className="ml-0.5 flex size-9 items-center justify-center">{signOut}</span>
-        </nav>
+        <span className="flex size-11 items-center justify-center">{signOut}</span>
       </header>
+
+      <MobileNav pathname={pathname} />
 
       {/* O leitor esconde a barra lateral marcando o <html>; este gancho é o
           que permite o padding acompanhar, sem o shell saber quem pediu. */}
@@ -207,7 +207,104 @@ export function AppShell({
         className={`transition-[padding] duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-60"}`}
       >
         {children}
+        {/* Reserva a altura da barra fixa mais a área segura, senão o fim de
+            cada página fica escondido atrás dela. */}
+        <div aria-hidden className="h-[calc(4.5rem+env(safe-area-inset-bottom))] lg:hidden" />
       </div>
+    </>
+  );
+}
+
+/**
+ * Bottom navigation for phones: five labelled destinations plus "Mais".
+ *
+ * Bottom rather than top because that is where the thumb is, and labelled
+ * because an icon-only row is a guessing game. Targets are 44px tall, the
+ * platform minimum the old 36px strip missed.
+ */
+function MobileNav({ pathname }: { pathname: string }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const overflowActive = OVERFLOW_ITEMS.some((i) => i.match(pathname));
+
+  return (
+    <>
+      <nav
+        aria-label="Navegação principal"
+        className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      >
+        {PRIMARY_ITEMS.map((item) => {
+          const active = item.match(pathname);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              // `min-w-0` é obrigatório: item flex não encolhe abaixo do
+              // próprio conteúdo sem ele, e "Anotações"/"Objetivos" empurravam
+              // a barra para 504px num viewport de 375.
+              className={`flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium ${
+                active ? "text-ink" : "text-muted"
+              }`}
+            >
+              <Icon size={19} className={active ? "text-profissional" : ""} />
+              <span className="max-w-full truncate px-0.5">{item.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => dialogRef.current?.showModal()}
+          aria-label="Mais destinos"
+          className={`flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium ${
+            overflowActive ? "text-ink" : "text-muted"
+          }`}
+        >
+          <MoreHorizontal size={19} className={overflowActive ? "text-profissional" : ""} />
+          Mais
+        </button>
+      </nav>
+
+      <dialog
+        ref={dialogRef}
+        aria-label="Mais destinos"
+        className="mx-auto mb-0 mt-auto w-full max-w-lg rounded-t-2xl bg-surface p-0 text-ink backdrop:bg-black/40 lg:hidden"
+      >
+        <div className="flex flex-col pb-[env(safe-area-inset-bottom)]">
+          <header className="flex items-center justify-between border-b border-line px-5 py-4">
+            <span className="font-medium">Mais</span>
+            <button
+              type="button"
+              onClick={() => dialogRef.current?.close()}
+              aria-label="Fechar"
+              className="flex size-11 items-center justify-center text-faint hover:text-ink"
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <ul className="flex flex-col px-2 py-2">
+            {OVERFLOW_ITEMS.map((item) => {
+              const active = item.match(pathname);
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => dialogRef.current?.close()}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${
+                      active ? "bg-surface-2 text-ink" : "text-muted"
+                    }`}
+                  >
+                    <Icon size={18} className={active ? "text-ink" : "text-faint"} />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </dialog>
     </>
   );
 }

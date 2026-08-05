@@ -56,12 +56,17 @@ export function AddMaterialForm({
         />
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* `flex-wrap` porque a linha estourava 375px: o select de objetivo era
+          `shrink-0` e o navegador o dimensiona pela OPÇÃO MAIS LONGA
+          ("Certificação AWS Solutions Architect (SAA-C03)"), levando a página
+          a 504px de largura no celular. Agora ele encolhe e, se ainda não
+          couber, a linha quebra em vez de empurrar o documento. */}
+      <div className="flex flex-wrap items-center gap-2">
         {goals && (
           <select
             name="goalId"
             defaultValue=""
-            className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-2 text-sm"
+            className="min-w-0 max-w-[10rem] flex-1 rounded-lg border border-line bg-surface px-2.5 py-2 text-sm sm:max-w-[14rem]"
           >
             <option value="">Sem objetivo</option>
             {goals.map((g) => (
@@ -75,7 +80,7 @@ export function AddMaterialForm({
           name="url"
           type="url"
           placeholder="https://… (opcional)"
-          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          className="min-w-0 flex-1 basis-40 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
         />
         <button
           type="submit"
