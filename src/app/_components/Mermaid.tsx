@@ -30,6 +30,10 @@ export function Mermaid({ chart }: { chart: string }) {
           theme: dark ? "dark" : "default",
         });
         const { svg } = await mermaid.render(`mmd-${seq++}`, chart);
+        // Só escreve quando o SVG está pronto. Se o componente for remontado,
+        // o container fica com o desenho anterior em vez de vazio — era o
+        // colapso de altura que fazia a página pular na aula com sete
+        // diagramas seguidos.
         if (!cancelled && ref.current) ref.current.innerHTML = svg;
       } catch {
         if (!cancelled) setFailed(true);
@@ -82,8 +86,10 @@ export function Mermaid({ chart }: { chart: string }) {
   return (
     <>
       {/* Um destes diagramas tem 1.681px de altura — rolar dentro dele para ler
-          é o caso que mais dói, e a proposta só previa expandir código. */}
-      <div className="group relative my-4">
+          é o caso que mais dói, e a proposta só previa expandir código.
+          `min-height` reserva espaço enquanto o mermaid ainda não respondeu,
+          para a primeira renderização não empurrar o texto abaixo. */}
+      <div className="group relative my-4 min-h-24">
         <button
           type="button"
           onClick={expand}
@@ -118,8 +124,8 @@ export function Mermaid({ chart }: { chart: string }) {
               <X size={18} />
             </button>
           </header>
-          {/* O SVG é clonado para cá quando o diálogo abre: renderizar o mesmo
-              gráfico duas vezes custaria uma segunda passada do mermaid. */}
+          {/* O SVG é MOVIDO para cá quando o diálogo abre e devolvido ao
+              fechar — ver expand()/restore(). */}
           <div ref={zoomRef} className="min-h-0 flex-1 overflow-auto p-6" />
         </div>
       </dialog>

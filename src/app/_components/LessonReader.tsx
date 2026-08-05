@@ -279,6 +279,22 @@ export function LessonReader({
     setCollapsed(allCollapsed ? new Set() : new Set(sectionSlugs));
   }, [allCollapsed, sectionSlugs]);
 
+  /**
+   * Estável entre renders: um objeto novo a cada quadro de rolagem anularia o
+   * memo do LessonContent e traria de volta o remonta-desmonta dos diagramas.
+   */
+  const proseStyle = useMemo(
+    () => ({
+      fontSize: `${prefs.fontSize}px`,
+      lineHeight: prefs.lineHeight,
+      // A medida do texto corrido é a preferência; tabela, código e diagrama
+      // continuam usando a largura toda.
+      ["--reader-measure" as string]: `${prefs.width}ch`,
+      ...surfaceStyle(prefs.surface),
+    }),
+    [prefs.fontSize, prefs.lineHeight, prefs.width, prefs.surface],
+  );
+
   const resumeHeading = useMemo(
     () => headings.find((h) => h.slug === initialAnchor) ?? null,
     [headings, initialAnchor],
@@ -358,14 +374,7 @@ export function LessonReader({
             sections
             collapsed={collapsed}
             onToggleSection={toggleSection}
-            style={{
-              fontSize: `${prefs.fontSize}px`,
-              lineHeight: prefs.lineHeight,
-              // A medida do texto corrido é a preferência; tabela, código e
-              // diagrama continuam usando a largura toda.
-              ["--reader-measure" as string]: `${prefs.width}ch`,
-              ...surfaceStyle(prefs.surface),
-            }}
+            style={proseStyle}
           />
           <SelectionTools
             lessonId={lessonId}

@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, memo, useContext, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -66,47 +67,57 @@ const components: Components = {
 };
 
 /**
- * Section-aware variant of the component map. Built per render because the
- * collapsed set changes; the plain map above stays a module constant for the
- * note panels, which have no sections.
+ * Collapse state travels by context, NOT as arguments to a component factory.
+ *
+ * The factory version rebuilt the components map whenever the collapsed set
+ * changed, and a new map means new component TYPES — React then unmounts and
+ * remounts the whole markdown subtree, destroying all nine mermaid diagrams.
+ * Through context the map is a module constant that never changes identity, so
+ * folding a section re-renders that section and nothing else.
  */
-function sectionComponents(
-  collapsed: ReadonlySet<string>,
-  onToggle: (slug: string) => void,
-): Components {
-  return {
-    ...components,
-    section({ children, ...props }) {
-      const slug = String((props as Record<string, unknown>)["data-slug"] ?? "");
-      const isCollapsed = collapsed.has(slug);
-      const kids = Array.isArray(children) ? children : [children];
-      // The heading always stays; only what follows it folds away.
-      const [heading, ...body] = kids;
-      return (
-        <section data-slug={slug} className="md-section">
-          <div className="group relative">
-            {heading}
-            <button
-              type="button"
-              onClick={() => onToggle(slug)}
-              aria-expanded={!isCollapsed}
-              aria-label={isCollapsed ? "Expandir seção" : "Recolher seção"}
-              className="absolute -left-6 top-1/2 hidden -translate-y-1/2 text-faint transition-colors hover:text-ink group-hover:block lg:block"
-            >
-              <ChevronRight
-                size={16}
-                className={`transition-transform ${isCollapsed ? "" : "rotate-90"}`}
-              />
-            </button>
-          </div>
-          {!isCollapsed && body}
-        </section>
-      );
-    },
-  };
+type SectionState = { collapsed: ReadonlySet<string>; toggle: (slug: string) => void };
+const EMPTY: SectionState = { collapsed: new Set(), toggle: () => {} };
+const SectionCtx = createContext<SectionState>(EMPTY);
+
+/** Componente de verdade (maiúsculo) porque usa hook — a regra de hooks não
+ *  reconhece uma função `section` minúscula dentro do mapa. */
+function MdSection({ children, ...props }: React.ComponentProps<"section">) {
+  const { collapsed, toggle: onToggle } = useContext(SectionCtx);
+  const slug = String((props as Record<string, unknown>)["data-slug"] ?? "");
+  const isCollapsed = collapsed.has(slug);
+  const kids = Array.isArray(children) ? children : [children];
+  // The heading always stays; only what follows it folds away.
+  const [heading, ...body] = kids;
+
+  return (
+    <section data-slug={slug} className="md-section">
+      <div className="group relative">
+        {heading}
+        <button
+          type="button"
+          onClick={() => onToggle(slug)}
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? "Expandir seção" : "Recolher seção"}
+          className="absolute -left-6 top-1/2 hidden -translate-y-1/2 text-faint transition-colors hover:text-ink group-hover:block lg:block"
+        >
+          <ChevronRight
+            size={16}
+            className={`transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+          />
+        </button>
+      </div>
+      {!isCollapsed && body}
+    </section>
+  );
 }
 
-export function LessonContent({
+const sectionComponents: Components = { ...components, section: MdSection };
+
+const PLUGINS_SECOES = [rehypeHighlight, rehypeSlug, rehypeSections];
+const PLUGINS_SIMPLES = [rehypeHighlight, rehypeSlug];
+const REMARK = [remarkGfm];
+
+function LessonContentImpl({
   content,
   compact = false,
   sections = false,
@@ -129,15 +140,25 @@ export function LessonContent({
   /** Aplicado no próprio elemento `.prose` — ver surfaceStyle. */
   style?: React.CSSProperties;
 }) {
-  const rehype = sections
-    ? [rehypeHighlight, rehypeSlug, rehypeSections]
-    : [rehypeHighlight, rehypeSlug];
-  const map =
-    sections && collapsed && onToggleSection
-      ? sectionComponents(collapsed, onToggleSection)
-      : components;
+  /**
+   * Both of these MUST keep a stable identity across renders.
+   *
+   * They were rebuilt on every render, and the reader re-renders on every
+   * frame of scrolling (the progress percentage is state). A new `components`
+   * object means new component TYPES for `pre`/`code`/`section`, so React
+   * unmounts and remounts that whole subtree — which re-runs the mermaid
+   * effect and blanks each diagram until its async render resolves. On the
+   * lesson where seven diagrams sit together, thousands of pixels collapsed
+   * and returned repeatedly while scrolling, and the page jumped.
+   */
+  const rehype = sections ? PLUGINS_SECOES : PLUGINS_SIMPLES;
+  const map = sections ? sectionComponents : components;
+  const ctx = useMemo(
+    () => ({ collapsed: collapsed ?? EMPTY.collapsed, toggle: onToggleSection ?? EMPTY.toggle }),
+    [collapsed, onToggleSection],
+  );
 
-  return (
+  const tree = (
     // O container segue a largura padrão das telas, mas o texto corrido tem
     // medida própria: a 1024px a linha chegava a 107 caracteres, contra os
     // 45–75 confortáveis. Só parágrafo e item de lista são limitados — tabela,
@@ -151,7 +172,7 @@ export function LessonContent({
       style={style}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={REMARK}
         rehypePlugins={rehype}
         components={map}
       >
@@ -159,4 +180,13 @@ export function LessonContent({
       </ReactMarkdown>
     </div>
   );
+
+  return sections ? <SectionCtx.Provider value={ctx}>{tree}</SectionCtx.Provider> : tree;
 }
+
+/**
+ * Memoised: the reader re-renders on every scroll frame, and re-rendering
+ * ~85k characters of markdown for a progress bar is both wasteful and — via
+ * the remount described above — visibly broken.
+ */
+export const LessonContent = memo(LessonContentImpl);
