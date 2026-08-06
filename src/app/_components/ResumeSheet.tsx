@@ -1,5 +1,6 @@
 import { BadgeCheck } from "lucide-react";
 import type { ResumeData } from "@/domain/resume/data";
+import type { CareerData } from "@/domain/resume/career";
 import type { ResumeContact } from "@/infra/db/schema";
 
 /**
@@ -16,12 +17,24 @@ export function monthYear(d: Date | null): string {
   return `${MONTHS[d.getMonth()]}/${d.getFullYear()}`;
 }
 
+/** "2010-03" → "mar/2010". A carreira guarda mês/ano como texto, não Date. */
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  const i = Number(m) - 1;
+  return MONTHS[i] ? `${MONTHS[i]}/${y}` : y;
+}
+
+function period(startDate: string, endDate: string | null): string {
+  return `${monthLabel(startDate)} — ${endDate ? monthLabel(endDate) : "atual"}`;
+}
+
 export function ResumeSheet({
   headline,
   summary,
   contact,
   highlights,
   data,
+  career,
   showStats = true,
 }: {
   headline: string;
@@ -29,8 +42,12 @@ export function ResumeSheet({
   contact: ResumeContact;
   highlights: string[];
   data: ResumeData;
+  career?: CareerData;
   showStats?: boolean;
 }) {
+  const experiences = career?.experiences ?? [];
+  // Só os marcados entram na folha — um portfólio inteiro não cabe numa página.
+  const projects = (career?.projects ?? []).filter((p) => p.highlight);
   const contactLine = [contact.email, contact.location, contact.linkedin, contact.github]
     .filter(Boolean)
     .join(" · ");
@@ -56,6 +73,57 @@ export function ResumeSheet({
               <li key={i}>{h}</li>
             ))}
           </ul>
+        </Section>
+      )}
+
+      {/* Experiência vem antes de competências: para um sênior, é o que o
+          leitor procura primeiro, e o resto do currículo é contexto dela. */}
+      {experiences.length > 0 && (
+        <Section title="Experiência">
+          <div className="flex flex-col gap-3.5">
+            {experiences.map((e) => (
+              <div key={e.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-medium">
+                    {e.role} <span className="text-muted">· {e.company}</span>
+                  </p>
+                  <span className="shrink-0 text-xs text-faint tabular-nums">
+                    {period(e.startDate, e.endDate)}
+                  </span>
+                </div>
+                {e.location && <p className="mt-0.5 text-xs text-faint">{e.location}</p>}
+                {e.description && (
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
+                    {e.description}
+                  </p>
+                )}
+                {e.techs && e.techs.length > 0 && (
+                  <p className="mt-1 text-xs text-muted">{e.techs.join(" · ")}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {projects.length > 0 && (
+        <Section title="Projetos">
+          <div className="flex flex-col gap-3">
+            {projects.map((p) => (
+              <div key={p.id}>
+                <p className="text-sm font-medium">
+                  {p.title}
+                  {p.url && <span className="ml-2 text-xs font-normal text-muted">{p.url}</span>}
+                </p>
+                {p.description && (
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted">{p.description}</p>
+                )}
+                {p.techs && p.techs.length > 0 && (
+                  <p className="mt-1 text-xs text-muted">{p.techs.join(" · ")}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </Section>
       )}
 

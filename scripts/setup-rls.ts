@@ -17,6 +17,8 @@ const TENANT_TABLES = [
   "flashcard_reviews",
   "certifications",
   "resume_profiles",
+  "resume_experiences",
+  "resume_projects",
   "lessons",
   "notes",
   "reading_progress",

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { runAsOwner } from "@/infra/db/client";
 import { resolvePublicResume } from "@/domain/resume/repository";
 import { getResumeData } from "@/domain/resume/data";
+import { getCareerData } from "@/domain/resume/career";
 import { ResumeSheet } from "@/app/_components/ResumeSheet";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,9 @@ export default async function PublicResumePage({
   if (!profile) notFound();
 
   // …then derived data is read under normal RLS, scoped to that owner.
-  const data = await runAsOwner(profile.ownerId, () => getResumeData(profile.ownerId));
+  const [data, career] = await runAsOwner(profile.ownerId, () =>
+    Promise.all([getResumeData(profile.ownerId), getCareerData(profile.ownerId)]),
+  );
 
   return (
     <main className="min-h-screen bg-canvas px-5 py-10">
@@ -46,6 +49,7 @@ export default async function PublicResumePage({
           contact={profile.contact ?? {}}
           highlights={profile.highlights ?? []}
           data={data}
+          career={career}
           showStats={false}
         />
         <p className="mt-4 text-center text-xs text-faint">

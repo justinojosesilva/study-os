@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Sparkles, Save, Printer, Copy, Check, TriangleAlert, Globe, Link2, ExternalLink } from "lucide-react";
 import { saveResumeAction, generateResumeAction, setResumePublicAction } from "@/app/_actions/resume";
 import type { ResumeData } from "@/domain/resume/data";
+import type { CareerData } from "@/domain/resume/career";
+import { CareerEditor } from "./CareerEditor";
 import type { ResumeContact } from "@/infra/db/schema";
 import { SkeletonBlock, SkeletonText } from "./Skeleton";
 import { ResumeSheet, monthYear } from "./ResumeSheet";
@@ -21,11 +23,13 @@ export function ResumeWorkspace({
   initialIsPublic,
   initialSlug,
   data,
+  career,
 }: {
   initial: InitialProfile;
   initialIsPublic: boolean;
   initialSlug: string | null;
   data: ResumeData;
+  career: CareerData;
 }) {
   const [headline, setHeadline] = useState(initial.headline);
   const [summary, setSummary] = useState(initial.summary);
@@ -279,6 +283,8 @@ export function ResumeWorkspace({
         </section>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <CareerEditor career={career} />
       </div>
 
       {/* Live preview / print sheet */}
@@ -289,6 +295,7 @@ export function ResumeWorkspace({
           contact={contact}
           highlights={highlights}
           data={data}
+          career={career}
         />
       </div>
     </div>

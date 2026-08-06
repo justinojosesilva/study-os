@@ -141,6 +141,13 @@
       "when": 1785724851700,
       "tag": "0019_nifty_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786056555107,
+      "tag": "0020_secret_smasher",
+      "breakpoints": true
     }
   ]
 }

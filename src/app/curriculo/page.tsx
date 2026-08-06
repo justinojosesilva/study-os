@@ -2,6 +2,7 @@ import { FileText } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getOrCreateResumeProfile } from "@/domain/resume/repository";
 import { getResumeData } from "@/domain/resume/data";
+import { getCareerData } from "@/domain/resume/career";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 import { ResumeWorkspace } from "@/app/_components/ResumeWorkspace";
 
@@ -9,9 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function CurriculoPage() {
   return scoped(async (ownerId) => {
-    const [profile, data] = await Promise.all([
+    const [profile, data, career] = await Promise.all([
       getOrCreateResumeProfile(ownerId),
       getResumeData(ownerId),
+      getCareerData(ownerId),
     ]);
 
     return (
@@ -42,6 +44,7 @@ export default async function CurriculoPage() {
           initialIsPublic={profile.isPublic}
           initialSlug={profile.publicSlug}
           data={data}
+          career={career}
         />
       </main>
     );

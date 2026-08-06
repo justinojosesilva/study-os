@@ -568,6 +568,65 @@ export const resumeProfiles = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// resume_experiences / resume_projects — a CARREIRA, que é anterior ao app.
+//
+// Todo o resto do currículo é DERIVADO do uso do Study OS: competência é
+// tópico `mastered`, credencial é certificação `passed`, dedicação é soma de
+// sessão. Isso descreve bem quem começou a carreira aqui dentro — e descreve
+// mal qualquer pessoa que já tinha uma. Medido em 06/08/2026: 4 tópicos
+// dominados, 0 certificações e 27h de estudo, contra 14 anos de experiência
+// real que o sistema não tinha onde guardar.
+//
+// Por isso estas duas tabelas são as únicas do módulo que armazenam fato em
+// vez de derivar: elas não têm origem no app, então não há de onde computá-las.
+// ---------------------------------------------------------------------------
+
+export const resumeExperiences = pgTable(
+  "resume_experiences",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    company: text("company").notNull(),
+    role: text("role").notNull(),
+    // Datas como texto "YYYY-MM": currículo se escreve em mês/ano, e um
+    // timestamp obrigaria a inventar o dia. `endDate` nulo = cargo atual.
+    startDate: text("start_date").notNull(),
+    endDate: text("end_date"),
+    location: text("location"),
+    description: text("description"), // markdown, mesmo renderizador do resto
+    techs: jsonb("techs").$type<string[]>(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resume_experiences_owner_idx").on(t.ownerId)],
+);
+
+export const resumeProjects = pgTable(
+  "resume_projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    url: text("url"),
+    repoUrl: text("repo_url"),
+    techs: jsonb("techs").$type<string[]>(),
+    // Quais projetos entram no currículo gerado. Um portfólio inteiro não cabe
+    // numa página, e a escolha é editorial — não dá para derivar.
+    highlight: boolean("highlight").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resume_projects_owner_idx").on(t.ownerId)],
+);
+
+// ---------------------------------------------------------------------------
 // Inferred types — the single source of truth for the domain layer.
 // ---------------------------------------------------------------------------
 
@@ -597,6 +656,10 @@ export type ExamQuestion = typeof examQuestions.$inferSelect;
 export type NewExamQuestion = typeof examQuestions.$inferInsert;
 export type ResumeProfile = typeof resumeProfiles.$inferSelect;
 export type NewResumeProfile = typeof resumeProfiles.$inferInsert;
+export type ResumeExperience = typeof resumeExperiences.$inferSelect;
+export type NewResumeExperience = typeof resumeExperiences.$inferInsert;
+export type ResumeProject = typeof resumeProjects.$inferSelect;
+export type NewResumeProject = typeof resumeProjects.$inferInsert;
 
 export type TutorAnswer = typeof tutorAnswers.$inferSelect;
 export type NewTutorAnswer = typeof tutorAnswers.$inferInsert;
