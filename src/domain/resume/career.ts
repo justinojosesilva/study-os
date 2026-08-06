@@ -49,6 +49,8 @@ export type ExperienceInput = {
   location: string | null;
   description: string | null;
   techs: string[] | null;
+  /** Só a importação define; o formulário manual deixa no default. */
+  sortOrder?: number;
 };
 
 export async function createExperience(
@@ -88,6 +90,8 @@ export type ProjectInput = {
   repoUrl: string | null;
   techs: string[] | null;
   highlight: boolean;
+  /** Só a importação define; o formulário manual deixa no default. */
+  sortOrder?: number;
 };
 
 export async function createProject(

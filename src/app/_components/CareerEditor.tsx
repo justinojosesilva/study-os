@@ -14,6 +14,7 @@ import {
 import type { CareerData } from "@/domain/resume/career";
 import type { ResumeExperience, ResumeProject } from "@/infra/db/schema";
 import { EmptyState } from "./EmptyState";
+import { CareerImportDialog } from "./CareerImportDialog";
 
 /**
  * A carreira anterior ao app, digitada à mão.
@@ -23,8 +24,17 @@ import { EmptyState } from "./EmptyState";
  * fatos que o app não tem como computar.
  */
 export function CareerEditor({ career }: { career: CareerData }) {
+  const vazio = career.experiences.length === 0 && career.projects.length === 0;
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted">
+          {vazio
+            ? "Um currículo real tem páginas. Importe o que você já tem em vez de digitar."
+            : "A carreira anterior ao Study OS."}
+        </p>
+        <CareerImportDialog />
+      </div>
       <ExperienceSection experiences={career.experiences} />
       <ProjectSection projects={career.projects} />
     </div>
