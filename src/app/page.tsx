@@ -133,7 +133,7 @@ export default async function DashboardPage() {
           hint="Defina uma meta de carreira e quebre em tópicos para acompanhar a evolução."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2">
           {data.goals.map((g, i) => (
             <GoalCard key={g.id} goal={g} index={i} />
           ))}
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
       {archived.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-medium text-muted">Arquivados</h2>
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col gap-2">
             {archived.map((g) => {
               const cat = CATEGORY[g.category];
               const Icon = cat.Icon;

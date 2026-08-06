@@ -201,7 +201,7 @@ function RecentHistory({
                 <span className="font-medium capitalize text-ink">{dayLabelFromKey(key)}</span>
                 <span className="tabular-nums">{fmtMin(total)}</span>
               </p>
-              <ul className="flex flex-col gap-1.5">
+              <ul className="flex flex-col gap-2">
                 {list.map((s) => (
                   <li key={s.id} className="rounded-lg border border-line px-3 py-2">
                     <div className="flex items-center justify-between gap-3">

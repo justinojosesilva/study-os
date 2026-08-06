@@ -13,13 +13,12 @@ import { FlashcardsDialog } from "./FlashcardsDialog";
 import { TutorDialog } from "./TutorDialog";
 import { LessonsDialog } from "./LessonsDialog";
 import { NotesDialog } from "./NotesDialog";
+import { useTopicTools, type CardLite, type LessonLite } from "./TopicTools";
 import { TOPIC_STATUS, STATUS_FLOW, MANUAL_STATUSES, type TopicStatus } from "@/lib/topic-status";
 import type { Topic } from "@/infra/db/schema";
 import type { NoteListItem } from "@/domain/notes/repository";
 
 type TopicLite = Pick<Topic, "id" | "title" | "weight" | "status" | "phase">;
-type CardLite = { id: string; front: string; back: string };
-type LessonLite = { id: string; title: string; kind: "aula" | "lab"; completedAt: Date | null };
 
 const NEW_PHASE = "__nova__";
 
@@ -40,9 +39,26 @@ export function TopicCard({
   phases?: string[];
 }) {
   const router = useRouter();
+  const openTool = useTopicTools();
   const [pending, startTransition] = useTransition();
   const [quizzing, startQuiz] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Com provedor na página, a linha só desenha os gatilhos. Sem ele, cada
+  // diálogo se monta como antes — o cartão continua utilizável isolado.
+  const request = (kind: "tutor" | "lessons" | "notes" | "cards") =>
+    openTool
+      ? () =>
+          openTool({
+            kind,
+            topicId: topic.id,
+            topicTitle: topic.title,
+            goalId,
+            lessons,
+            notes,
+            cards,
+          })
+      : undefined;
 
   function makeQuiz() {
     setError(null);
@@ -183,24 +199,31 @@ export function TopicCard({
         <span className="text-xs text-faint">peso {topic.weight}</span>
 
         <div className="ml-auto flex items-center gap-1">
-          <TutorDialog topicId={topic.id} topicTitle={topic.title} />
+          <TutorDialog
+            topicId={topic.id}
+            topicTitle={topic.title}
+            onRequestOpen={request("tutor")}
+          />
           <LessonsDialog
             topicId={topic.id}
             topicTitle={topic.title}
             goalId={goalId}
             lessons={lessons}
+            onRequestOpen={request("lessons")}
           />
           <NotesDialog
             topicId={topic.id}
             topicTitle={topic.title}
             goalId={goalId}
             notes={notes}
+            onRequestOpen={request("notes")}
           />
           <FlashcardsDialog
             topicId={topic.id}
             topicTitle={topic.title}
             goalId={goalId}
             cards={cards}
+            onRequestOpen={request("cards")}
           />
           <button
             type="button"

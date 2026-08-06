@@ -17,6 +17,7 @@ import {
 import { CATEGORY } from "@/lib/categories";
 import { formatMonthYear, daysUntil, toDateKey } from "@/lib/date";
 import { TopicGroups } from "@/app/_components/TopicGroups";
+import { TopicToolsProvider } from "@/app/_components/TopicTools";
 import { AddTopicForm } from "@/app/_components/AddTopicForm";
 import { GoalActions } from "@/app/_components/GoalActions";
 import { MaterialRow } from "@/app/_components/MaterialRow";
@@ -162,13 +163,15 @@ export default async function GoalDetailPage({
             />
           </>
         ) : (
-          <TopicGroups
-            goalId={goal.id}
-            topics={goal.topics}
-            cardsByTopic={cardsByTopic}
-            lessonsByTopic={lessonsByTopic}
-            notesByTopic={notesByTopic}
-          />
+          <TopicToolsProvider>
+            <TopicGroups
+              goalId={goal.id}
+              topics={goal.topics}
+              cardsByTopic={cardsByTopic}
+              lessonsByTopic={lessonsByTopic}
+              notesByTopic={notesByTopic}
+            />
+          </TopicToolsProvider>
         )}
         <AddTopicForm goalId={goal.id} />
       </section>

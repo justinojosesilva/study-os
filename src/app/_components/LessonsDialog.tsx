@@ -9,6 +9,7 @@ import {
   setLessonCompletedAction,
 } from "@/app/_actions/lessons";
 import { EmptyState } from "./EmptyState";
+import { useAutoOpen, type OnDemandProps } from "./onDemandDialog";
 
 type LessonLite = { id: string; title: string; kind: "aula" | "lab"; completedAt: Date | null };
 
@@ -17,13 +18,18 @@ export function LessonsDialog({
   topicTitle,
   goalId,
   lessons,
+  autoOpen,
+  hideTrigger,
+  onDismiss,
+  onRequestOpen,
 }: {
   topicId: string;
   topicTitle: string;
   goalId: string;
   lessons: LessonLite[];
-}) {
+} & OnDemandProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useAutoOpen(dialogRef, autoOpen);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [kind, setKind] = useState<"aula" | "lab">("aula");
@@ -85,25 +91,33 @@ export function LessonsDialog({
     });
   }
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => (onRequestOpen ? onRequestOpen() : dialogRef.current?.showModal())}
+      aria-label={`${topicTitle}: ${aulas.done} de ${aulas.total} aulas lidas, ${labs.done} de ${labs.total} labs praticados`}
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+    >
+      <BookOpen size={14} />
+      {aulas.total > 0 ? `${aulas.done}/${aulas.total}` : 0}
+      {labs.total > 0 && (
+        <>
+          <FlaskConical size={14} className="ml-1" />
+          {labs.done}/{labs.total}
+        </>
+      )}
+    </button>
+  );
+
+  if (onRequestOpen) return trigger;
+
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        aria-label={`${topicTitle}: ${aulas.done} de ${aulas.total} aulas lidas, ${labs.done} de ${labs.total} labs praticados`}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-      >
-        <BookOpen size={14} />
-        {aulas.total > 0 ? `${aulas.done}/${aulas.total}` : 0}
-        {labs.total > 0 && (
-          <>
-            <FlaskConical size={14} className="ml-1" />
-            {labs.done}/{labs.total}
-          </>
-        )}
-      </button>
+      {!hideTrigger && trigger}
 
       <dialog
         ref={dialogRef}
+        onClose={onDismiss}
         aria-label={`Aulas de ${topicTitle}`}
         className="m-auto w-[min(92vw,560px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >

@@ -52,7 +52,7 @@ export default async function GoalsPage() {
             hint="Defina uma meta de carreira e quebre em tópicos para acompanhar a evolução."
           />
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2">
             {goals.map((g, i) => (
               <GoalCard key={g.id} goal={g} index={i} />
             ))}
@@ -64,7 +64,7 @@ export default async function GoalsPage() {
             <h2 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-muted">
               <Archive size={15} /> Arquivados
             </h2>
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col gap-2">
               {archived.map((g) => {
                 const cat = CATEGORY[g.category];
                 const Icon = cat.Icon;

@@ -60,7 +60,7 @@ export default async function CertificationsPage() {
                     {group.title}
                     <span className="ml-1.5 text-faint">{items.length}</span>
                   </h2>
-                  <ul className="flex flex-col gap-3">
+                  <ul className="flex flex-col gap-2">
                     {items.map((cert) => (
                       <CertCard key={cert.id} cert={cert} goals={goals} />
                     ))}

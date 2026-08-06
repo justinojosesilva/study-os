@@ -6,6 +6,7 @@ import { askTutorAction } from "@/app/_actions/ai";
 import { SaveTutorNote } from "./SaveTutorNote";
 import type { TutorMode } from "@/domain/ai/tutor";
 import { SkeletonBlock, SkeletonText } from "./Skeleton";
+import { useAutoOpen, type OnDemandProps } from "./onDemandDialog";
 
 const MODES: { key: TutorMode; label: string }[] = [
   { key: "explain", label: "Explicar" },
@@ -16,11 +17,16 @@ const MODES: { key: TutorMode; label: string }[] = [
 export function TutorDialog({
   topicId,
   topicTitle,
+  autoOpen,
+  hideTrigger,
+  onDismiss,
+  onRequestOpen,
 }: {
   topicId: string;
   topicTitle: string;
-}) {
+} & OnDemandProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useAutoOpen(dialogRef, autoOpen);
   const [question, setQuestion] = useState("");
   const [text, setText] = useState<string | null>(null);
   // O que produziu a resposta na tela. A caixa de pergunta continua editável
@@ -46,18 +52,26 @@ export function TutorDialog({
     });
   }
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => (onRequestOpen ? onRequestOpen() : dialogRef.current?.showModal())}
+      aria-label="Tutor"
+      className="text-faint transition-colors hover:text-ink"
+    >
+      <Lightbulb size={16} />
+    </button>
+  );
+
+  if (onRequestOpen) return trigger;
+
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        aria-label="Tutor"
-        className="text-faint transition-colors hover:text-ink"
-      >
-        <Lightbulb size={16} />
-      </button>
+      {!hideTrigger && trigger}
 
       <dialog
         ref={dialogRef}
+        onClose={onDismiss}
         aria-label={`Tutor: ${topicTitle}`}
         className="m-auto w-[min(92vw,560px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >

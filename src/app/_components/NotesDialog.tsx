@@ -8,6 +8,7 @@ import { createNoteAction } from "@/app/_actions/notes";
 import { formatDayMonth } from "@/lib/date";
 import { EmptyState } from "./EmptyState";
 import type { NoteListItem } from "@/domain/notes/repository";
+import { useAutoOpen, type OnDemandProps } from "./onDemandDialog";
 
 /**
  * The topic's notes, reachable from its card — the answer to "where do I find
@@ -19,13 +20,18 @@ export function NotesDialog({
   topicTitle,
   goalId,
   notes,
+  autoOpen,
+  hideTrigger,
+  onDismiss,
+  onRequestOpen,
 }: {
   topicId: string;
   topicTitle: string;
   goalId: string;
   notes: NoteListItem[];
-}) {
+} & OnDemandProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useAutoOpen(dialogRef, autoOpen);
   const router = useRouter();
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -52,19 +58,27 @@ export function NotesDialog({
     });
   }
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => (onRequestOpen ? onRequestOpen() : dialogRef.current?.showModal())}
+      aria-label={`${topicTitle}: ${notes.length} ${notes.length === 1 ? "anotação" : "anotações"}`}
+      className="tip inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+    >
+      <NotebookPen size={14} />
+      {notes.length}
+    </button>
+  );
+
+  if (onRequestOpen) return trigger;
+
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        aria-label={`${topicTitle}: ${notes.length} ${notes.length === 1 ? "anotação" : "anotações"}`}
-        className="tip inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-      >
-        <NotebookPen size={14} />
-        {notes.length}
-      </button>
+      {!hideTrigger && trigger}
 
       <dialog
         ref={dialogRef}
+        onClose={onDismiss}
         aria-label={`Anotações de ${topicTitle}`}
         className="m-auto max-h-[92vh] w-[min(92vw,560px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >

@@ -83,7 +83,7 @@ export function ExamCard({
               </span>
             )}
           </p>
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col gap-2">
             {attempts.slice(0, 5).map((a) => (
               <li key={a.id}>
                 <Link

@@ -22,11 +22,11 @@ export function GoalCard({
     <li className="motion-safe:animate-fade-in" style={{ animationDelay: `${index * 60}ms` }}>
       <Link
         href={`/goals/${goal.id}`}
-        className={`press block rounded-xl border border-line bg-surface px-5 py-4 hover:bg-surface-2 ${
+        className={`press block rounded-xl border border-line bg-surface px-4 py-3 hover:bg-surface-2 ${
           muted ? "opacity-60" : ""
         }`}
       >
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-2.5 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon size={18} className={cat.text} />
             <span className="truncate font-medium">{goal.title}</span>

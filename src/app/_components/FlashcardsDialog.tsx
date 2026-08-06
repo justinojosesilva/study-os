@@ -11,6 +11,7 @@ import { generateFlashcardsAction } from "@/app/_actions/ai";
 import type { GeneratedCard } from "@/domain/ai/flashcardGen";
 import { Skeleton, SkeletonBlock } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
+import { useAutoOpen, type OnDemandProps } from "./onDemandDialog";
 
 type Card = { id: string; front: string; back: string };
 
@@ -19,10 +20,20 @@ type Props = {
   topicTitle: string;
   goalId: string;
   cards: Card[];
-};
+} & OnDemandProps;
 
-export function FlashcardsDialog({ topicId, topicTitle, goalId, cards }: Props) {
+export function FlashcardsDialog({
+  topicId,
+  topicTitle,
+  goalId,
+  cards,
+  autoOpen,
+  hideTrigger,
+  onDismiss,
+  onRequestOpen,
+}: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useAutoOpen(dialogRef, autoOpen);
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -38,18 +49,26 @@ export function FlashcardsDialog({ topicId, topicTitle, goalId, cards }: Props) 
     });
   }
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => (onRequestOpen ? onRequestOpen() : dialogRef.current?.showModal())}
+      aria-label={`Flashcards de ${topicTitle}: ${cards.length}`}
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+    >
+      <Layers size={14} /> {cards.length}
+    </button>
+  );
+
+  if (onRequestOpen) return trigger;
+
   return (
     <>
-      <button
-        onClick={() => dialogRef.current?.showModal()}
-        aria-label={`Flashcards de ${topicTitle}: ${cards.length}`}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-      >
-        <Layers size={14} /> {cards.length}
-      </button>
+      {!hideTrigger && trigger}
 
       <dialog
         ref={dialogRef}
+        onClose={onDismiss}
         aria-label={`Flashcards de ${topicTitle}`}
         className="m-auto w-[min(92vw,520px)] rounded-2xl bg-surface p-0 text-ink backdrop:bg-black/40"
       >
