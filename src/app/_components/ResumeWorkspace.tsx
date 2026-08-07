@@ -284,7 +284,7 @@ export function ResumeWorkspace({
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <CareerEditor career={career} />
+        <CareerEditor career={career} github={contact.github} />
       </div>
 
       {/* Live preview / print sheet */}

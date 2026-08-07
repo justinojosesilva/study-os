@@ -15,6 +15,7 @@ import type { CareerData } from "@/domain/resume/career";
 import type { ResumeExperience, ResumeProject } from "@/infra/db/schema";
 import { EmptyState } from "./EmptyState";
 import { CareerImportDialog } from "./CareerImportDialog";
+import { GithubImportDialog } from "./GithubImportDialog";
 
 /**
  * A carreira anterior ao app, digitada à mão.
@@ -23,7 +24,21 @@ import { CareerImportDialog } from "./CareerImportDialog";
  * sabia descrever quem começou a carreira aqui dentro. Isto é a entrada dos
  * fatos que o app não tem como computar.
  */
-export function CareerEditor({ career }: { career: CareerData }) {
+/** Aceita "user", "@user" ou a URL do perfil, e devolve só o usuário. */
+function githubUser(valor?: string): string | undefined {
+  const v = (valor ?? "").trim();
+  if (!v) return undefined;
+  const m = v.match(/github\.com\/([^/?#]+)/i);
+  return (m ? m[1] : v.replace(/^@/, "")) || undefined;
+}
+
+export function CareerEditor({
+  career,
+  github,
+}: {
+  career: CareerData;
+  github?: string;
+}) {
   const vazio = career.experiences.length === 0 && career.projects.length === 0;
   return (
     <div className="flex flex-col gap-5">
@@ -36,7 +51,7 @@ export function CareerEditor({ career }: { career: CareerData }) {
         <CareerImportDialog />
       </div>
       <ExperienceSection experiences={career.experiences} />
-      <ProjectSection projects={career.projects} />
+      <ProjectSection projects={career.projects} github={githubUser(github)} />
     </div>
   );
 }
@@ -221,28 +236,37 @@ function ExperienceForm({
 
 // --- projetos ---------------------------------------------------------------
 
-function ProjectSection({ projects }: { projects: ResumeProject[] }) {
+function ProjectSection({
+  projects,
+  github,
+}: {
+  projects: ResumeProject[];
+  github?: string;
+}) {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const destaques = projects.filter((p) => p.highlight).length;
 
   return (
     <section className="rounded-xl border border-line bg-surface px-5 py-4">
-      <div className="mb-1 flex items-center justify-between gap-3">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-medium">
           <FolderGit2 size={17} className="text-certificacao" />
           Projetos
         </h2>
-        <button
-          type="button"
-          onClick={() => {
-            setAdding((v) => !v);
-            setEditing(null);
-          }}
-          className="press inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
-        >
-          {adding ? <X size={14} /> : <Plus size={14} />} {adding ? "Cancelar" : "Adicionar"}
-        </button>
+        <div className="flex items-center gap-2">
+          <GithubImportDialog sugestaoUsuario={github} />
+          <button
+            type="button"
+            onClick={() => {
+              setAdding((v) => !v);
+              setEditing(null);
+            }}
+            className="press inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
+          >
+            {adding ? <X size={14} /> : <Plus size={14} />} {adding ? "Cancelar" : "Adicionar"}
+          </button>
+        </div>
       </div>
       <p className="mb-3 text-xs text-muted">
         Só os marcados com estrela entram no currículo — {destaques} de {projects.length}.
