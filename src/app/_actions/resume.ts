@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
 import { updateResumeProfile, setResumePublic } from "@/domain/resume/repository";
 import { getResumeData } from "@/domain/resume/data";
+import { getCareerData } from "@/domain/resume/career";
 import { generateResumeContent, type ResumeContent } from "@/domain/ai/resume";
 import type { ResumeContact } from "@/infra/db/schema";
 
@@ -69,6 +70,9 @@ export async function generateResumeAction(
 
   // Read the user's real data inside the scoped (RLS) transaction; the model
   // call itself happens outside any long-held transaction.
-  const data = await scoped((ownerId) => getResumeData(ownerId));
-  return generateResumeContent({ targetRole: role, jobDescription, data });
+  const { data, career } = await scoped(async (ownerId) => ({
+    data: await getResumeData(ownerId),
+    career: await getCareerData(ownerId),
+  }));
+  return generateResumeContent({ targetRole: role, jobDescription, data, career });
 }
