@@ -4,6 +4,7 @@ import { scoped } from "@/domain/auth";
 import { listAllMaterials, type MaterialWithGoal } from "@/domain/materials/repository";
 import { listActiveGoalOptions } from "@/domain/goals/repository";
 import { MaterialRow } from "@/app/_components/MaterialRow";
+import { materialUsage } from "@/domain/materials/repository";
 import { AddMaterialForm } from "@/app/_components/AddMaterialForm";
 import { EmptyState } from "@/app/_components/EmptyState";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
@@ -14,9 +15,10 @@ const UNATTACHED = "__none__";
 
 export default async function MaterialsPage() {
   return scoped(async (ownerId) => {
-  const [materials, goals] = await Promise.all([
+  const [materials, goals, usage] = await Promise.all([
     listAllMaterials(ownerId),
     listActiveGoalOptions(ownerId),
+    materialUsage(ownerId),
   ]);
 
   // Group by goal, preserving first-seen order; unattached goes last.
@@ -80,6 +82,7 @@ export default async function MaterialsPage() {
                       progressPct: m.progressPct,
                     }}
                     goalId={m.goalId}
+                    usage={usage.get(m.id)}
                   />
                 ))}
               </ul>

@@ -1,5 +1,5 @@
 import { db } from "@/infra/db/client";
-import { lessons, topics, goals, type NewLesson } from "@/infra/db/schema";
+import { lessons, topics, goals, materials, type NewLesson } from "@/infra/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 
 export type LessonListItem = {
@@ -40,6 +40,9 @@ export type LessonRead = {
   goalId: string;
   goalTitle: string;
   completedAt: Date | null;
+  materialId: string | null;
+  materialTitle: string | null;
+  materialUrl: string | null;
 };
 
 /** Full lesson + its topic/goal context, for the reading page. */
@@ -57,10 +60,16 @@ export async function getLessonForReading(
       goalId: goals.id,
       goalTitle: goals.title,
       completedAt: lessons.completedAt,
+      // A fonte, quando houver. `leftJoin` porque a maioria das aulas é
+      // anterior ao vínculo e nunca terá material.
+      materialId: materials.id,
+      materialTitle: materials.title,
+      materialUrl: materials.url,
     })
     .from(lessons)
     .innerJoin(topics, eq(lessons.topicId, topics.id))
     .innerJoin(goals, eq(topics.goalId, goals.id))
+    .leftJoin(materials, eq(lessons.materialId, materials.id))
     .where(and(eq(lessons.ownerId, ownerId), eq(lessons.id, lessonId)))
     .limit(1);
   return row ?? null;

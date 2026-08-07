@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, ExternalLink, Pencil, Check } from "lucide-react";
+import { Trash2, ExternalLink, Pencil, Check, Clock, BookOpen } from "lucide-react";
 import { MATERIAL_TYPE, MATERIAL_TYPE_OPTIONS, type MaterialType } from "@/lib/materials";
 import {
   updateMaterialAction,
   updateMaterialProgressAction,
   deleteMaterialAction,
 } from "@/app/_actions/materials";
+import type { MaterialUsage } from "@/domain/materials/repository";
 
 type MaterialLite = {
   id: string;
@@ -20,9 +21,12 @@ type MaterialLite = {
 export function MaterialRow({
   material,
   goalId,
+  usage,
 }: {
   material: MaterialLite;
   goalId: string | null;
+  /** O que este material rendeu. Derivado na leitura — ver `materialUsage`. */
+  usage?: MaterialUsage;
 }) {
   const [progress, setProgress] = useState(material.progressPct);
   const [editing, setEditing] = useState(false);
@@ -139,6 +143,7 @@ export function MaterialRow({
           )}
           {material.url && <ExternalLink size={12} className="shrink-0 text-faint" />}
         </div>
+        <Usage usage={usage} />
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
@@ -176,4 +181,36 @@ export function MaterialRow({
       </button>
     </li>
   );
+}
+
+/**
+ * A evidência de uso, e não uma porcentagem inventada: o sistema sabe as horas
+ * e os artefatos, não o tamanho do curso. Some por completo quando não há nada
+ * ligado — uma linha de zeros só ocuparia espaço.
+ */
+function Usage({ usage }: { usage?: MaterialUsage }) {
+  if (!usage || (usage.sessions === 0 && usage.lessons === 0)) return null;
+
+  const partes: string[] = [];
+  if (usage.minutes > 0) partes.push(fmtDuracao(usage.minutes));
+  if (usage.sessions > 0) {
+    partes.push(`${usage.sessions} ${usage.sessions === 1 ? "sessão" : "sessões"}`);
+  }
+  if (usage.lessons > 0) {
+    partes.push(`${usage.lessons} ${usage.lessons === 1 ? "aula" : "aulas"}`);
+  }
+
+  return (
+    <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-faint">
+      {usage.minutes > 0 ? <Clock size={11} /> : <BookOpen size={11} />}
+      <span className="tabular-nums">{partes.join(" · ")}</span>
+    </p>
+  );
+}
+
+function fmtDuracao(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}min`;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, "0")}`;
 }

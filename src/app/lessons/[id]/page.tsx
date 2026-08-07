@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Library } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getLessonForReading } from "@/domain/lessons/repository";
 import { getProgress } from "@/domain/reading/repository";
@@ -39,7 +40,37 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-faint">
           {lesson.topicTitle}
         </p>
-        <h1 className="mb-8 text-2xl font-medium tracking-tight">{lesson.title}</h1>
+        {/* Sem material, o h1 carrega o espaçamento original em vez de um
+            espaçador vazio. Medido: dá no mesmo (as margens colapsam), então é
+            só clareza — a maioria das aulas é anterior ao vínculo e cai aqui. */}
+        <h1
+          className={`text-2xl font-medium tracking-tight ${
+            lesson.materialTitle ? "mb-2" : "mb-8"
+          }`}
+        >
+          {lesson.title}
+        </h1>
+
+        {/* De onde esta aula saiu. Antes do vínculo não havia resposta para
+            "isso veio de onde?" — a aula existia solta. */}
+        {lesson.materialTitle && (
+          <p className="mb-8 flex items-center gap-1.5 text-xs text-muted">
+            <Library size={13} className="shrink-0 text-faint" />
+            <span className="text-faint">de</span>
+            {lesson.materialUrl ? (
+              <a
+                href={lesson.materialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-profissional hover:underline"
+              >
+                {lesson.materialTitle}
+              </a>
+            ) : (
+              <span>{lesson.materialTitle}</span>
+            )}
+          </p>
+        )}
         <LessonReader
           lessonId={lesson.id}
           topicId={lesson.topicId}

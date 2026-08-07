@@ -1,6 +1,13 @@
 import { db } from "@/infra/db/client";
-import { materials, goals, type NewMaterial, type Material } from "@/infra/db/schema";
-import { and, eq, asc } from "drizzle-orm";
+import {
+  materials,
+  goals,
+  studySessions,
+  lessons,
+  type NewMaterial,
+  type Material,
+} from "@/infra/db/schema";
+import { and, eq, asc, sql, isNotNull } from "drizzle-orm";
 
 export async function listMaterialsForGoal(ownerId: string, goalId: string) {
   return db
@@ -112,4 +119,65 @@ export async function listMaterialsForPicker(ownerId: string): Promise<PickerMat
     .leftJoin(goals, eq(materials.goalId, goals.id))
     .where(eq(materials.ownerId, ownerId))
     .orderBy(asc(goals.title), asc(materials.createdAt));
+}
+
+export type MaterialUsage = {
+  sessions: number;
+  minutes: number;
+  lessons: number;
+  lastStudiedAt: Date | null;
+};
+
+/**
+ * O que o material RENDEU, derivado na leitura — nada disso é armazenado.
+ *
+ * Deliberadamente não devolve porcentagem: para isso seria preciso saber o
+ * tamanho total do curso, que só o dono sabe (ele está dentro do player). O
+ * sistema sabe horas e artefatos; "4h20 · 6 sessões · 3 aulas" é informação
+ * real, "47%" seria um número com aparência de precisão. A barra manual
+ * continua existindo para o que só o dono sabe.
+ *
+ * Duas consultas agregadas em vez de um join: somar duração e contar aulas na
+ * mesma consulta multiplicaria as linhas e inflaria os minutos.
+ */
+export async function materialUsage(ownerId: string): Promise<Map<string, MaterialUsage>> {
+  const [bySession, byLesson] = await Promise.all([
+    db
+      .select({
+        materialId: studySessions.materialId,
+        sessions: sql<number>`count(*)::int`,
+        minutes: sql<number>`coalesce(sum(${studySessions.durationMin}), 0)::int`,
+        lastStudiedAt: sql<Date | null>`max(${studySessions.startedAt})`,
+      })
+      .from(studySessions)
+      .where(and(eq(studySessions.ownerId, ownerId), isNotNull(studySessions.materialId)))
+      .groupBy(studySessions.materialId),
+    db
+      .select({
+        materialId: lessons.materialId,
+        lessons: sql<number>`count(*)::int`,
+      })
+      .from(lessons)
+      .where(and(eq(lessons.ownerId, ownerId), isNotNull(lessons.materialId)))
+      .groupBy(lessons.materialId),
+  ]);
+
+  const map = new Map<string, MaterialUsage>();
+  const entry = (id: string) =>
+    map.get(id) ?? { sessions: 0, minutes: 0, lessons: 0, lastStudiedAt: null };
+
+  for (const r of bySession) {
+    if (!r.materialId) continue;
+    map.set(r.materialId, {
+      ...entry(r.materialId),
+      sessions: r.sessions,
+      minutes: r.minutes,
+      lastStudiedAt: r.lastStudiedAt ? new Date(r.lastStudiedAt) : null,
+    });
+  }
+  for (const r of byLesson) {
+    if (!r.materialId) continue;
+    map.set(r.materialId, { ...entry(r.materialId), lessons: r.lessons });
+  }
+  return map;
 }

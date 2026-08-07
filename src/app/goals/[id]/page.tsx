@@ -7,6 +7,7 @@ import { listFlashcardsForGoal } from "@/domain/flashcards/repository";
 import {
   listMaterialsForGoal,
   listMaterialsForPicker,
+  materialUsage,
 } from "@/domain/materials/repository";
 import { listLessonsForGoal } from "@/domain/lessons/repository";
 import { listNotesForGoal } from "@/domain/notes/repository";
@@ -42,13 +43,14 @@ export default async function GoalDetailPage({
   const goal = await getGoalWithTopics(ownerId, id);
   if (!goal) notFound();
 
-  const [allCards, materials, pickerMaterials, certs, allLessons, allNotes, examAttempts] =
+  const [allCards, materials, pickerMaterials, usage, certs, allLessons, allNotes, examAttempts] =
     await Promise.all([
     listFlashcardsForGoal(ownerId, id),
     listMaterialsForGoal(ownerId, id),
     // Todos os materiais, não só os deste objetivo: uma aula pode sair de um
     // curso ligado a outro objetivo, ou de nenhum.
     listMaterialsForPicker(ownerId),
+    materialUsage(ownerId),
     listCertificationsForGoal(ownerId, id),
     listLessonsForGoal(ownerId, id),
     listNotesForGoal(ownerId, id),
@@ -201,7 +203,7 @@ export default async function GoalDetailPage({
         ) : (
           <ul className="flex flex-col">
             {materials.map((m) => (
-              <MaterialRow key={m.id} material={m} goalId={goal.id} />
+              <MaterialRow key={m.id} material={m} goalId={goal.id} usage={usage.get(m.id)} />
             ))}
           </ul>
         )}
