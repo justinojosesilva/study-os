@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import { Play } from "lucide-react";
 import { SessionLogger } from "./SessionLogger";
 import type { PickerTopic } from "@/domain/topics/repository";
+import type { PickerMaterial } from "@/domain/materials/repository";
 
 /**
  * One session dialog for the whole agenda, opened on demand.
@@ -25,9 +26,11 @@ const LauncherCtx = createContext<Launcher | null>(null);
 
 export function SessionLauncherProvider({
   topics,
+  materials = [],
   children,
 }: {
   topics: PickerTopic[];
+  materials?: PickerMaterial[];
   children: React.ReactNode;
 }) {
   const [request, setRequest] = useState<Request | null>(null);
@@ -47,6 +50,7 @@ export function SessionLauncherProvider({
         <SessionLogger
           key={`${request.topicId ?? "livre"}-${request.minutes ?? 0}-${request.seq}`}
           topics={topics}
+          materials={materials}
           initialTopicId={request.topicId}
           initialMinutes={request.minutes}
           autoOpen

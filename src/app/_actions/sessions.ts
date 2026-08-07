@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
 import { createSession, ownsTopic } from "@/domain/sessions/repository";
+import { ownsMaterial } from "@/domain/materials/repository";
 import { createNote, deriveTitle } from "@/domain/notes/repository";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -20,6 +21,15 @@ export async function logStudySession(formData: FormData): Promise<ActionResult>
       return { ok: false, error: "Tópico não encontrado." };
     }
 
+    // De onde veio o estudo. Opcional, e checado como o tópico: o id vem do
+    // cliente, então a posse tem de ser confirmada aqui.
+    const rawMaterial = formData.get("materialId");
+    const materialId =
+      typeof rawMaterial === "string" && rawMaterial ? rawMaterial : null;
+    if (materialId && !(await ownsMaterial(ownerId, materialId))) {
+      return { ok: false, error: "Material não encontrado." };
+    }
+
     const rawComp = Number(formData.get("comprehension"));
     const comprehension =
       Number.isFinite(rawComp) && rawComp >= 1 && rawComp <= 10 ? rawComp : null;
@@ -33,6 +43,7 @@ export async function logStudySession(formData: FormData): Promise<ActionResult>
     const session = await createSession({
       ownerId,
       topicId,
+      materialId,
       startedAt,
       endedAt,
       durationMin: Math.round(durationMin),

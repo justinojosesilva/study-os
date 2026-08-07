@@ -153,6 +153,12 @@ export const studySessions = pgTable(
     topicId: uuid("topic_id").references(() => topics.id, {
       onDelete: "set null",
     }),
+    // De onde veio o estudo desta sessão. Faz parte do EVENTO — escrito uma vez
+    // na criação, junto com a duração — então não fere o log imutável.
+    // `set null` porque apagar um curso não pode apagar o histórico de estudo.
+    materialId: uuid("material_id").references(() => materials.id, {
+      onDelete: "set null",
+    }),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     durationMin: integer("duration_min").notNull(),
@@ -166,6 +172,7 @@ export const studySessions = pgTable(
     index("sessions_owner_idx").on(t.ownerId),
     index("sessions_owner_started_idx").on(t.ownerId, t.startedAt),
     index("sessions_topic_idx").on(t.topicId),
+    index("sessions_material_idx").on(t.materialId),
   ],
 );
 
@@ -337,6 +344,12 @@ export const lessons = pgTable(
     topicId: uuid("topic_id")
       .notNull()
       .references(() => topics.id, { onDelete: "cascade" }),
+    // A FONTE de onde esta aula saiu — o curso, livro ou artigo que a originou.
+    // `set null` (e não cascade): apagar o curso não pode apagar a aula, que é
+    // trabalho seu, não dele.
+    materialId: uuid("material_id").references(() => materials.id, {
+      onDelete: "set null",
+    }),
     title: text("title").notNull(),
     // Reading material vs. hands-on lab. They are different work — finishing
     // the reading is not finishing the practice — so progress counts them apart
@@ -353,6 +366,7 @@ export const lessons = pgTable(
   (t) => [
     index("lessons_owner_idx").on(t.ownerId),
     index("lessons_topic_idx").on(t.topicId),
+    index("lessons_material_idx").on(t.materialId),
   ],
 );
 

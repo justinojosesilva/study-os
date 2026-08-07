@@ -4,7 +4,10 @@ import Link from "next/link";
 import { scoped } from "@/domain/auth";
 import { getGoalWithTopics } from "@/domain/goals/repository";
 import { listFlashcardsForGoal } from "@/domain/flashcards/repository";
-import { listMaterialsForGoal } from "@/domain/materials/repository";
+import {
+  listMaterialsForGoal,
+  listMaterialsForPicker,
+} from "@/domain/materials/repository";
 import { listLessonsForGoal } from "@/domain/lessons/repository";
 import { listNotesForGoal } from "@/domain/notes/repository";
 import { listExamsForGoal } from "@/domain/exams/repository";
@@ -39,9 +42,13 @@ export default async function GoalDetailPage({
   const goal = await getGoalWithTopics(ownerId, id);
   if (!goal) notFound();
 
-  const [allCards, materials, certs, allLessons, allNotes, examAttempts] = await Promise.all([
+  const [allCards, materials, pickerMaterials, certs, allLessons, allNotes, examAttempts] =
+    await Promise.all([
     listFlashcardsForGoal(ownerId, id),
     listMaterialsForGoal(ownerId, id),
+    // Todos os materiais, não só os deste objetivo: uma aula pode sair de um
+    // curso ligado a outro objetivo, ou de nenhum.
+    listMaterialsForPicker(ownerId),
     listCertificationsForGoal(ownerId, id),
     listLessonsForGoal(ownerId, id),
     listNotesForGoal(ownerId, id),
@@ -163,7 +170,7 @@ export default async function GoalDetailPage({
             />
           </>
         ) : (
-          <TopicToolsProvider>
+          <TopicToolsProvider materials={pickerMaterials}>
             <TopicGroups
               goalId={goal.id}
               topics={goal.topics}

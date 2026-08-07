@@ -9,6 +9,7 @@ import {
   setLessonCompleted,
 } from "@/domain/lessons/repository";
 import { ownsTopic } from "@/domain/sessions/repository";
+import { ownsMaterial } from "@/domain/materials/repository";
 
 export type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -30,7 +31,16 @@ export async function createLessonAction(fd: FormData): Promise<ActionResult> {
       return { ok: false, error: "Tópico não encontrado." };
     }
     const kind = fd.get("kind") === "lab" ? "lab" : "aula";
-    const row = await createLesson({ ownerId, topicId, kind, ...parsed });
+
+    // A fonte de onde a aula saiu. Opcional, e a posse é checada aqui porque o
+    // id vem do cliente.
+    const rawMaterial = String(fd.get("materialId") ?? "").trim();
+    const materialId = rawMaterial || null;
+    if (materialId && !(await ownsMaterial(ownerId, materialId))) {
+      return { ok: false, error: "Material não encontrado." };
+    }
+
+    const row = await createLesson({ ownerId, topicId, kind, materialId, ...parsed });
     if (goalId) revalidatePath(`/goals/${goalId}`);
     return { ok: true, id: row.id };
   });

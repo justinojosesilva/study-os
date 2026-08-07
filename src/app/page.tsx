@@ -5,6 +5,7 @@ import { getDashboardData } from "@/domain/dashboard";
 import { dailyStudyMinutes } from "@/domain/metrics";
 import { listArchivedGoals } from "@/domain/goals/repository";
 import { listTopicsForPicker } from "@/domain/topics/repository";
+import { listMaterialsForPicker } from "@/domain/materials/repository";
 import { listRecentSessions } from "@/domain/sessions/repository";
 import { countDueCards } from "@/domain/reviews/repository";
 import { getGamification } from "@/domain/gamification";
@@ -37,10 +38,11 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   return scoped(async (ownerId) => {
   const heatmapStart = addDays(startOfWeek(), -25 * 7);
-  const [data, topics, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan, reading] =
+  const [data, topics, materials, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan, reading] =
     await Promise.all([
       getDashboardData(ownerId),
       listTopicsForPicker(ownerId),
+      listMaterialsForPicker(ownerId),
       listRecentSessions(ownerId, 6),
       dailyStudyMinutes(ownerId, heatmapStart),
       getCurrentUser(),
@@ -90,7 +92,7 @@ export default async function DashboardPage() {
               </span>
             </Link>
           )}
-          <SessionLogger topics={topics} />
+          <SessionLogger topics={topics} materials={materials} />
         </div>
       </header>
 

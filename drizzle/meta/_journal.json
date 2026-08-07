@@ -148,6 +148,13 @@
       "when": 1786056555107,
       "tag": "0020_secret_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786142163503,
+      "tag": "0021_amazing_madame_masque",
+      "breakpoints": true
     }
   ]
 }

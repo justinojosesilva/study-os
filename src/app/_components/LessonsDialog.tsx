@@ -10,6 +10,7 @@ import {
 } from "@/app/_actions/lessons";
 import { EmptyState } from "./EmptyState";
 import { useAutoOpen, type OnDemandProps } from "./onDemandDialog";
+import type { PickerMaterial } from "@/domain/materials/repository";
 
 type LessonLite = { id: string; title: string; kind: "aula" | "lab"; completedAt: Date | null };
 
@@ -18,6 +19,7 @@ export function LessonsDialog({
   topicTitle,
   goalId,
   lessons,
+  materials = [],
   autoOpen,
   hideTrigger,
   onDismiss,
@@ -27,12 +29,14 @@ export function LessonsDialog({
   topicTitle: string;
   goalId: string;
   lessons: LessonLite[];
+  materials?: PickerMaterial[];
 } & OnDemandProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useAutoOpen(dialogRef, autoOpen);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [kind, setKind] = useState<"aula" | "lab">("aula");
+  const [materialId, setMaterialId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [deleting, startDelete] = useTransition();
@@ -72,6 +76,7 @@ export function LessonsDialog({
     fd.set("title", title);
     fd.set("content", content);
     fd.set("kind", kind);
+    fd.set("materialId", materialId);
     startTransition(async () => {
       const res = await createLessonAction(fd);
       if (res.ok) {
@@ -211,6 +216,22 @@ export function LessonsDialog({
               <input type="file" accept=".md,.mdx,text/markdown" onChange={onFile} className="hidden" />
             </label>
           </div>
+          {/* De onde a aula saiu. Só aparece se houver material cadastrado. */}
+          {materials.length > 0 && (
+            <select
+              value={materialId}
+              onChange={(e) => setMaterialId(e.target.value)}
+              aria-label="Material de origem"
+              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted"
+            >
+              <option value="">Sem material de origem</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                </option>
+              ))}
+            </select>
+          )}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}

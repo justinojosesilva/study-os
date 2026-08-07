@@ -6,6 +6,7 @@ import { LessonsDialog } from "./LessonsDialog";
 import { NotesDialog } from "./NotesDialog";
 import { FlashcardsDialog } from "./FlashcardsDialog";
 import type { NoteListItem } from "@/domain/notes/repository";
+import type { PickerMaterial } from "@/domain/materials/repository";
 
 /**
  * Um diálogo de cada tipo para a página inteira, montado ao clicar.
@@ -48,7 +49,15 @@ type Opener = (req: TopicToolRequest) => void;
 
 const ToolsCtx = createContext<Opener | null>(null);
 
-export function TopicToolsProvider({ children }: { children: React.ReactNode }) {
+export function TopicToolsProvider({
+  materials = [],
+  children,
+}: {
+  /** Fontes possíveis para "de onde veio esta aula" — iguais na página toda,
+   *  então vêm pelo provedor em vez de repetidas em cada linha. */
+  materials?: PickerMaterial[];
+  children: React.ReactNode;
+}) {
   const [request, setRequest] = useState<(TopicToolRequest & { seq: number }) | null>(null);
 
   // `seq` distingue dois cliques no MESMO botão, para o diálogo remontar em vez
@@ -60,16 +69,20 @@ export function TopicToolsProvider({ children }: { children: React.ReactNode }) 
   return (
     <ToolsCtx.Provider value={open}>
       {children}
-      {request && <Mounted request={request} onDismiss={() => setRequest(null)} />}
+      {request && (
+        <Mounted request={request} materials={materials} onDismiss={() => setRequest(null)} />
+      )}
     </ToolsCtx.Provider>
   );
 }
 
 function Mounted({
   request,
+  materials,
   onDismiss,
 }: {
   request: TopicToolRequest & { seq: number };
+  materials: PickerMaterial[];
   onDismiss: () => void;
 }) {
   const key = `${request.kind}-${request.topicId}-${request.seq}`;
@@ -93,6 +106,7 @@ function Mounted({
           topicTitle={request.topicTitle}
           goalId={request.goalId}
           lessons={request.lessons}
+          materials={materials}
           {...shared}
         />
       );

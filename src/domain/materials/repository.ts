@@ -77,3 +77,39 @@ export async function deleteMaterial(ownerId: string, materialId: string) {
     .returning({ id: materials.id });
   return Boolean(row);
 }
+
+/** Posse, para as ações validarem um id vindo do cliente. */
+export async function ownsMaterial(ownerId: string, materialId: string) {
+  const [row] = await db
+    .select({ id: materials.id })
+    .from(materials)
+    .where(and(eq(materials.ownerId, ownerId), eq(materials.id, materialId)))
+    .limit(1);
+  return Boolean(row);
+}
+
+export type PickerMaterial = {
+  id: string;
+  title: string;
+  type: Material["type"];
+  goalTitle: string | null;
+};
+
+/**
+ * Lista achatada para os seletores de "de onde veio isto" — na sessão e na
+ * aula. Mesmo formato do `listTopicsForPicker`, e ordenada por objetivo para
+ * que o `<optgroup>` saia agrupado sem trabalho extra no cliente.
+ */
+export async function listMaterialsForPicker(ownerId: string): Promise<PickerMaterial[]> {
+  return db
+    .select({
+      id: materials.id,
+      title: materials.title,
+      type: materials.type,
+      goalTitle: goals.title,
+    })
+    .from(materials)
+    .leftJoin(goals, eq(materials.goalId, goals.id))
+    .where(eq(materials.ownerId, ownerId))
+    .orderBy(asc(goals.title), asc(materials.createdAt));
+}

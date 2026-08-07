@@ -4,6 +4,7 @@ import { scoped } from "@/domain/auth";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { getAvailability } from "@/domain/user/repository";
 import { listTopicsForPicker } from "@/domain/topics/repository";
+import { listMaterialsForPicker } from "@/domain/materials/repository";
 import { listSessionsBetween } from "@/domain/sessions/repository";
 import {
   listNotesBySessions,
@@ -47,13 +48,15 @@ export default async function AgendaPage() {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
-    const [plan, availability, topics, monthSessions, nextSteps] = await Promise.all([
-      getWeekPlan(ownerId),
-      getAvailability(ownerId),
-      listTopicsForPicker(ownerId),
-      listSessionsBetween(ownerId, monthStart, monthEnd),
-      nextStepsByTopic(ownerId),
-    ]);
+    const [plan, availability, topics, materials, monthSessions, nextSteps] =
+      await Promise.all([
+        getWeekPlan(ownerId),
+        getAvailability(ownerId),
+        listTopicsForPicker(ownerId),
+        listMaterialsForPicker(ownerId),
+        listSessionsBetween(ownerId, monthStart, monthEnd),
+        nextStepsByTopic(ownerId),
+      ]);
 
     // Notes now live in their own table; the session only points at the moment
     // they were written. One extra query keyed by session id, rather than a
@@ -135,7 +138,7 @@ export default async function AgendaPage() {
         ) : (
           // Um único diálogo de sessão para a página inteira. Cada bloco pedia
           // o seu: 27 instâncias numa semana normal.
-          <SessionLauncherProvider topics={topics}>
+          <SessionLauncherProvider topics={topics} materials={materials}>
             {hasAnyBlocks && <WeekStrategy />}
 
             {/* Desktop: month calendar; click a day for its panels. */}

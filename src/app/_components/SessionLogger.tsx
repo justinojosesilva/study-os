@@ -8,10 +8,13 @@ import { useAmbientPlayer } from "./useAmbientPlayer";
 import { useAmbientAudio, SYNTH_VOLUME_SCALE } from "./useAmbientAudio";
 import { SoundControl, useSoundPrefs } from "./SoundControl";
 import type { PickerTopic } from "@/domain/topics/repository";
+import type { PickerMaterial } from "@/domain/materials/repository";
 
 export function SessionLogger({
   topics,
+  materials = [],
   initialTopicId,
+  initialMaterialId,
   initialMinutes,
   triggerLabel = "Iniciar sessão",
   triggerClassName,
@@ -20,7 +23,9 @@ export function SessionLogger({
   onDismiss,
 }: {
   topics: PickerTopic[];
+  materials?: PickerMaterial[];
   initialTopicId?: string;
+  initialMaterialId?: string;
   initialMinutes?: number;
   triggerLabel?: string;
   triggerClassName?: string;
@@ -239,6 +244,26 @@ export function SessionLogger({
                 ))}
               </select>
             </Field>
+
+            {/* Só aparece se houver material cadastrado — um seletor com uma
+                opção vazia é ruído no formulário mais usado do app. */}
+            {materials.length > 0 && (
+              <Field label="Material (opcional)">
+                <select
+                  name="materialId"
+                  defaultValue={initialMaterialId ?? ""}
+                  className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+                >
+                  <option value="">Sem material</option>
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.goalTitle ? `${m.goalTitle} — ` : ""}
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Duração (min)">
