@@ -59,6 +59,11 @@ async function main() {
     ),
   );
 
+  // O `nullif` na política não é enfeite: num backend que já teve o GUC
+  // definido, resetá-lo deixa STRING VAZIA, não NULL — e `''::uuid` lança
+  // exceção. Sem o nullif, uma consulta sem owner definido QUEBRA em vez de
+  // devolver 0 linhas, que é a propriedade que a arquitetura promete. Falha
+  // fechada nos dois casos, mas só uma delas é a documentada.
   console.log("Aplicando RLS por tabela…");
   for (const t of TENANT_TABLES) {
     await adminDb.execute(sql.raw(`ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY;`));
@@ -66,8 +71,8 @@ async function main() {
     await adminDb.execute(
       sql.raw(`
       CREATE POLICY owner_isolation ON ${t}
-        USING (owner_id = current_setting('app.owner_id', true)::uuid)
-        WITH CHECK (owner_id = current_setting('app.owner_id', true)::uuid);
+        USING (owner_id = nullif(current_setting('app.owner_id', true), '')::uuid)
+        WITH CHECK (owner_id = nullif(current_setting('app.owner_id', true), '')::uuid);
     `),
     );
     console.log(`  ✓ ${t}`);

@@ -19,11 +19,48 @@ import * as schema from "./schema";
  * repositories keep importing `db` unchanged and still get per-tenant scoping.
  */
 
-const appUrl = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
-const adminUrl = process.env.DATABASE_URL;
-if (!appUrl || !adminUrl) {
-  throw new Error("DATABASE_URL is not set. Copy .env.example to .env.");
+/**
+ * Valida a string de conexão SEM nunca colocá-la na mensagem de erro.
+ *
+ * Isto não é zelo excessivo: `new URL()` sobre um valor inválido lança
+ * `TypeError: Invalid URL` com a ENTRADA INTEIRA anexada, e o build do Next
+ * despeja essa mensagem no log. Foi assim que uma senha de produção vazou —
+ * uma variável de ambiente ficou com valor parcial (só a senha, sem o resto da
+ * URL), o parser quebrou, e o log publicou o segredo.
+ *
+ * Aqui o erro diz QUAL variável está errada e POR QUÊ, e o valor nunca sai.
+ */
+function connectionUrl(nome: string, valor: string | undefined): string {
+  if (!valor) {
+    throw new Error(`${nome} não está definida. Copie .env.example para .env.`);
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(valor);
+  } catch {
+    // Sem interpolar `valor` — é justamente o que não pode aparecer em log.
+    throw new Error(
+      `${nome} não é uma URL de conexão válida. ` +
+        `Esperado algo como postgresql://usuario:senha@host/banco — ` +
+        `confira se a variável não recebeu só um pedaço (a senha, por exemplo) ` +
+        `e se a senha não contém @ : / # sem escape.`,
+    );
+  }
+  if (!parsed.protocol.startsWith("postgres")) {
+    throw new Error(
+      `${nome} tem protocolo "${parsed.protocol}" — esperado postgresql:// ou postgres://.`,
+    );
+  }
+  if (!parsed.hostname) {
+    throw new Error(`${nome} não tem host. Confira se a URL está completa.`);
+  }
+  return valor;
 }
+
+const adminUrl = connectionUrl("DATABASE_URL", process.env.DATABASE_URL);
+const appUrl = process.env.APP_DATABASE_URL
+  ? connectionUrl("APP_DATABASE_URL", process.env.APP_DATABASE_URL)
+  : adminUrl;
 
 const globalForDb = globalThis as unknown as {
   appClient?: ReturnType<typeof postgres>;
