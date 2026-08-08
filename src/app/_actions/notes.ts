@@ -18,8 +18,7 @@ function parseFields(fd: FormData) {
   // heading, and asking for it twice is friction at the exact moment the user
   // is trying to dump what they just learned.
   const title = String(fd.get("title") ?? "").trim() || deriveTitle(content);
-  const nextStep = String(fd.get("nextStep") ?? "").trim() || null;
-  return { title, content, nextStep };
+  return { title, content };
 }
 
 export async function createNoteAction(fd: FormData): Promise<ActionResult> {

@@ -415,7 +415,6 @@ export const notes = pgTable(
     content: text("content").notNull(), // markdown
     // The one field adopted from the redesign proposal: it has a job the body
     // text does not — telling the next session where to pick up.
-    nextStep: text("next_step"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

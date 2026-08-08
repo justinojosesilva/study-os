@@ -51,7 +51,6 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           goalId={note.goalId ?? ""}
           initialTitle={note.title}
           initialContent={note.content}
-          initialNextStep={note.nextStep}
         />
 
         {/* A card belongs to a topic, so this only appears when the note has

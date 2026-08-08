@@ -5,8 +5,6 @@ import Link from "next/link";
 import { RefreshCw, X, Check } from "lucide-react";
 import { StartBlockButton } from "./SessionLauncher";
 import { SessionNote } from "./SessionNote";
-import { NextStepHint } from "./NextStepHint";
-import type { NextStep } from "@/domain/notes/repository";
 import { formatTime } from "@/lib/date";
 
 export type CalBlock = {
@@ -58,13 +56,11 @@ export function MonthCalendar({
   cells,
   planByDate,
   pastByDate,
-  nextSteps,
 }: {
   monthLabel: string;
   cells: DayCell[];
   planByDate: Record<string, CalBlock[]>;
   pastByDate: Record<string, PastSession[]>;
-  nextSteps: Map<string, NextStep>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -185,7 +181,6 @@ export function MonthCalendar({
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{b.label}</p>
                           {b.goalTitle && <p className="truncate text-xs text-muted">{b.goalTitle}</p>}
-                          {b.topicId && <NextStepHint step={nextSteps.get(b.topicId)} />}
                         </div>
                         <StartBlockButton topicId={b.topicId} minutes={b.minutes} />
                       </li>

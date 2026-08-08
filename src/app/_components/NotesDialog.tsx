@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { NotebookPen, X, Plus, ExternalLink, ArrowRight } from "lucide-react";
+import { NotebookPen, X, Plus, ExternalLink } from "lucide-react";
 import { createNoteAction } from "@/app/_actions/notes";
 import { formatDayMonth } from "@/lib/date";
 import { EmptyState } from "./EmptyState";
@@ -124,12 +124,6 @@ export function NotesDialog({
                         <span>·</span>
                         {n.length.toLocaleString("pt-BR")} caracteres
                       </span>
-                      {n.nextStep && (
-                        <span className="flex items-start gap-1 text-[11px] text-profissional">
-                          <ArrowRight size={11} className="mt-0.5 shrink-0" />
-                          <span className="line-clamp-1">{n.nextStep}</span>
-                        </span>
-                      )}
                     </Link>
                   </li>
                 ))}

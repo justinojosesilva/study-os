@@ -1,6 +1,6 @@
 import { db } from "@/infra/db/client";
 import { notes, topics, goals, studySessions, type NewNote } from "@/infra/db/schema";
-import { and, eq, desc, sql, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, desc, sql, inArray } from "drizzle-orm";
 
 /**
  * Notes are what the user produced while studying — markdown documents about a
@@ -24,7 +24,6 @@ export type NoteListItem = {
   id: string;
   topicId: string | null;
   title: string;
-  nextStep: string | null;
   createdAt: Date;
   updatedAt: Date;
   /** Characters in the body — the list shows how much is behind each entry. */
@@ -40,7 +39,6 @@ const LIST_COLUMNS = {
   id: notes.id,
   topicId: notes.topicId,
   title: notes.title,
-  nextStep: notes.nextStep,
   createdAt: notes.createdAt,
   updatedAt: notes.updatedAt,
   length: sql<number>`length(${notes.content})`,
@@ -76,7 +74,6 @@ export type NoteRead = {
   id: string;
   title: string;
   content: string;
-  nextStep: string | null;
   createdAt: Date;
   updatedAt: Date;
   topicId: string | null;
@@ -95,8 +92,7 @@ export async function getNote(ownerId: string, noteId: string): Promise<NoteRead
       id: notes.id,
       title: notes.title,
       content: notes.content,
-      nextStep: notes.nextStep,
-      createdAt: notes.createdAt,
+          createdAt: notes.createdAt,
       updatedAt: notes.updatedAt,
       topicId: notes.topicId,
       topicTitle: topics.title,
@@ -241,7 +237,6 @@ export type NoteBrowseItem = {
   title: string;
   topicTitle: string | null;
   goalTitle: string | null;
-  nextStep: string | null;
   createdAt: Date;
   updatedAt: Date;
   length: number;
@@ -255,8 +250,7 @@ export async function listAllNotes(ownerId: string): Promise<NoteBrowseItem[]> {
       title: notes.title,
       topicTitle: topics.title,
       goalTitle: goals.title,
-      nextStep: notes.nextStep,
-      createdAt: notes.createdAt,
+          createdAt: notes.createdAt,
       updatedAt: notes.updatedAt,
       length: sql<number>`length(${notes.content})`,
     })
@@ -312,35 +306,6 @@ export async function listNotesForLesson(
     .orderBy(notes.createdAt);
 }
 
-export type NextStep = { noteId: string; text: string };
-
-/**
- * Where to pick up, per topic — the most recently updated note that actually
- * has a `next_step`.
- *
- * Filtered on the column rather than taking the newest note and reading its
- * field: a newer note without a next step must not erase a still-valid one
- * written earlier.
- */
-export async function nextStepsByTopic(ownerId: string): Promise<Map<string, NextStep>> {
-  const rows = await db
-    .select({ noteId: notes.id, topicId: notes.topicId, text: notes.nextStep })
-    .from(notes)
-    .where(
-      and(eq(notes.ownerId, ownerId), isNotNull(notes.topicId), isNotNull(notes.nextStep)),
-    )
-    .orderBy(desc(notes.updatedAt));
-
-  const out = new Map<string, NextStep>();
-  for (const r of rows) {
-    // Rows arrive newest first, so the first one seen for a topic wins.
-    if (r.topicId && r.text && !out.has(r.topicId)) {
-      out.set(r.topicId, { noteId: r.noteId, text: r.text });
-    }
-  }
-  return out;
-}
-
 export async function createNote(input: NewNote) {
   const [row] = await db.insert(notes).values(input).returning({ id: notes.id });
   return row;
@@ -349,7 +314,7 @@ export async function createNote(input: NewNote) {
 export async function updateNote(
   ownerId: string,
   noteId: string,
-  fields: { title: string; content: string; nextStep: string | null },
+  fields: { title: string; content: string },
 ) {
   const [row] = await db
     .update(notes)

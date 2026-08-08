@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Eye, Save, Trash2, X, ArrowRight } from "lucide-react";
+import { Pencil, Eye, Save, Trash2, X } from "lucide-react";
 import { updateNoteAction, deleteNoteAction } from "@/app/_actions/notes";
 import { LessonContent } from "./LessonContent";
 import { ReaderSettings } from "./ReaderSettings";
@@ -23,19 +23,16 @@ export function NoteEditor({
   goalId,
   initialTitle,
   initialContent,
-  initialNextStep,
 }: {
   noteId: string;
   goalId: string;
   initialTitle: string;
   initialContent: string;
-  initialNextStep: string | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
-  const [nextStep, setNextStep] = useState(initialNextStep ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
   const [removing, startRemove] = useTransition();
@@ -49,7 +46,6 @@ export function NoteEditor({
     const fd = new FormData();
     fd.set("title", title);
     fd.set("content", content);
-    fd.set("nextStep", nextStep);
     startSave(async () => {
       const res = await updateNoteAction(noteId, goalId, fd);
       if (res.ok) setEditing(false);
@@ -60,7 +56,6 @@ export function NoteEditor({
   function cancel() {
     setTitle(initialTitle);
     setContent(initialContent);
-    setNextStep(initialNextStep ?? "");
     setError(null);
     setEditing(false);
   }
@@ -105,7 +100,6 @@ export function NoteEditor({
           </span>
         </div>
 
-        {initialNextStep && <NextStepCard text={initialNextStep} />}
         <div
           className={`rounded-xl transition-colors ${prefs.family === "serif" ? "font-serif" : ""} ${
             prefs.surface === "sistema" ? "" : "px-5 py-4"
@@ -157,15 +151,6 @@ export function NoteEditor({
         className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium"
       />
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted">Próximo passo</span>
-        <input
-          value={nextStep}
-          onChange={(e) => setNextStep(e.target.value)}
-          placeholder="Onde retomar na próxima sessão"
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
-        />
-      </label>
 
       {/* Lado a lado no monitor, empilhado no celular: escrever markdown sem
           ver o resultado é justamente o que tornava a anotação ruim de fazer. */}
@@ -183,17 +168,5 @@ export function NoteEditor({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
-  );
-}
-
-function NextStepCard({ text }: { text: string }) {
-  return (
-    <p className="mb-5 flex items-start gap-2 rounded-lg border border-profissional/30 bg-profissional-soft px-3 py-2 text-sm">
-      <ArrowRight size={15} className="mt-0.5 shrink-0 text-profissional" />
-      <span>
-        <span className="font-medium text-profissional">Próximo passo · </span>
-        {text}
-      </span>
-    </p>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NotebookPen, Search, ArrowRight } from "lucide-react";
+import { NotebookPen, Search } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { listAllNotes, searchNotes } from "@/domain/notes/repository";
 import { formatDayMonth } from "@/lib/date";
@@ -107,12 +107,6 @@ export default async function NotesPage({
                     <span>·</span>
                     {n.length.toLocaleString("pt-BR")} caracteres
                   </span>
-                  {n.nextStep && (
-                    <span className="flex items-start gap-1 text-xs text-profissional">
-                      <ArrowRight size={12} className="mt-0.5 shrink-0" />
-                      <span className="line-clamp-1">{n.nextStep}</span>
-                    </span>
-                  )}
                 </Link>
               </li>
             ))}

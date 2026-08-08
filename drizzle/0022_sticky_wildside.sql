@@ -1,0 +1,1 @@
+ALTER TABLE "notes" DROP COLUMN "next_step";

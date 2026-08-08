@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": "1.0",
+  "meta": {
+    "project": "Study OS",
+    "generatedAt": "2026-08-08T17:06:22.308Z",
+    "period": {
+      "from": "2026-07-20",
+      "to": "2026-08-08"
+    },
+    "environment": "production",
+    "sources": [
+      {
+        "type": "database",
+        "ref": "Neon (produção)",
+        "access": "full"
+      },
+      {
+        "type": "code",
+        "ref": "repositório local",
+        "access": "full"
+      },
+      {
+        "type": "git",
+        "ref": "main",
+        "access": "full"
+      },
+      {
+        "type": "analytics",
+        "ref": "inexistente",
+        "access": "none"
+      }
+    ],
+    "agent": {
+      "model": "claude-opus-5",
+      "skillVersion": "2.0"
+    }
+  },
+  "coverage": {
+    "journeys": [
+      {
+        "id": "J-01",
+        "name": "Registrar sessão de estudo",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-011"
+        ]
+      },
+      {
+        "id": "J-02",
+        "name": "Revisar flashcards",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-001"
+        ]
+      },
+      {
+        "id": "J-03",
+        "name": "Ler aula",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-018"
+        ]
+      },
+      {
+        "id": "J-04",
+        "name": "Escrever anotação",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-007"
+        ]
+      },
+      {
+        "id": "J-05",
+        "name": "Fazer prova/questionário",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-019"
+        ]
+      },
+      {
+        "id": "J-06",
+        "name": "Consultar o tutor",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-020"
+        ]
+      },
+      {
+        "id": "J-07",
+        "name": "Consultar material",
+        "instrumented": true,
+        "evidenceRefs": [
+          "EV-009"
+        ]
+      },
+      {
+        "id": "J-08",
+        "name": "Navegar e descobrir recursos",
+        "instrumented": false,
+        "evidenceRefs": [
+          "EV-016"
+        ]
+      },
+      {
+        "id": "J-09",
+        "name": "Exportar/publicar currículo",
+        "instrumented": false,
+        "evidenceRefs": [
+          "EV-017"
+        ]
+      },
+      {
+        "id": "J-10",
+        "name": "Importar CV e projetos",
+        "instrumented": false,
+        "evidenceRefs": [
+          "EV-021"
+        ]
+      }
+    ],
+    "instrumentedRatio": 0.7
+  },
+  "evidence": [
+    {
+      "id": "EV-001",
+      "kind": "measurement",
+      "statement": "500 revisões de flashcard registradas entre 22/jul e 05/ago; nenhuma nos últimos 3 dias.",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select count(*), min(reviewed_at), max(reviewed_at) from flashcard_reviews"
+      },
+      "metric": "revisoes_total",
+      "value": 500,
+      "unit": "count",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-002",
+      "kind": "measurement",
+      "statement": "85% das avaliações são 'Difícil' (424 de 500).",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select rating, count(*) from flashcard_reviews group by rating"
+      },
+      "metric": "share_rating_dificil",
+      "value": 0.848,
+      "unit": "ratio",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-003",
+      "kind": "measurement",
+      "statement": "91% das revisões ocorrem em cartas ainda em 'learning' (457 de 500) — elas não graduam.",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select state, count(*) from flashcard_reviews group by state"
+      },
+      "metric": "share_state_learning",
+      "value": 0.914,
+      "unit": "ratio",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-004",
+      "kind": "measurement",
+      "statement": "6,0 revisões por carta em 19 dias (84 cartas, 500 revisões); as 5 piores foram vistas 11 a 12 vezes.",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select count(distinct flashcard_id), count(*) from flashcard_reviews"
+      },
+      "metric": "revisoes_por_carta",
+      "value": 6,
+      "unit": "count",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-005",
+      "kind": "measurement",
+      "statement": "Volume semanal de revisão caiu 73%: 167 → 262 → 71.",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select date_trunc('week',reviewed_at), count(*) from flashcard_reviews group by 1"
+      },
+      "metric": "queda_semanal",
+      "value": -0.729,
+      "unit": "ratio",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-006",
+      "kind": "measurement",
+      "statement": "A nota 'Fácil' nunca foi usada em 500 revisões.",
+      "source": {
+        "type": "database",
+        "ref": "flashcard_reviews",
+        "query": "select count(*) from flashcard_reviews where rating = 4"
+      },
+      "metric": "uso_rating_facil",
+      "value": 0,
+      "unit": "count",
+      "sampleSize": 500,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-007",
+      "kind": "measurement",
+      "statement": "O campo next_step nunca foi preenchido: 0 de 32 anotações.",
+      "source": {
+        "type": "database",
+        "ref": "notes",
+        "query": "select count(*), count(next_step) from notes"
+      },
+      "metric": "preenchimento_next_step",
+      "value": 0,
+      "unit": "ratio",
+      "sampleSize": 32,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 1,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-008",
+      "kind": "measurement",
+      "statement": "A tabela certifications tem 0 linhas, com rota, formulário e item no menu principal construídos.",
+      "source": {
+        "type": "database",
+        "ref": "certifications",
+        "query": "select count(*) from certifications"
+      },
+      "metric": "certificacoes",
+      "value": 0,
+      "unit": "count",
+      "sampleSize": 0,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-009",
+      "kind": "measurement",
+      "statement": "materials tem 2 linhas, ambas criadas em 07/ago, ambas com 0% de progresso.",
+      "source": {
+        "type": "database",
+        "ref": "materials",
+        "query": "select count(*), min(created_at), max(created_at) from materials"
+      },
+      "metric": "materiais",
+      "value": 2,
+      "unit": "count",
+      "sampleSize": 2,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-010",
+      "kind": "measurement",
+      "statement": "Nenhuma sessão ou aula ligada a material: 0 de 30 sessões, 0 de 22 aulas. O vínculo subiu em 07/ago.",
+      "source": {
+        "type": "database",
+        "ref": "study_sessions",
+        "query": "select count(*) from study_sessions where material_id is not null"
+      },
+      "metric": "vinculo_material",
+      "value": 0,
+      "unit": "count",
+      "sampleSize": 30,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 1,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-011",
+      "kind": "measurement",
+      "statement": "O campo comprehension é preenchido em 43% das sessões (13 de 30).",
+      "source": {
+        "type": "database",
+        "ref": "study_sessions",
+        "query": "select count(*), count(comprehension) from study_sessions"
+      },
+      "metric": "preenchimento_comprehension",
+      "value": 0.433,
+      "unit": "ratio",
+      "sampleSize": 30,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 1,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-012",
+      "kind": "measurement",
+      "statement": "77% dos tópicos seguem em 'todo' (44 de 57) e nenhum tópico novo foi criado desde 29/jul.",
+      "source": {
+        "type": "database",
+        "ref": "topics",
+        "query": "select status, count(*) from topics group by status"
+      },
+      "metric": "share_topicos_todo",
+      "value": 0.772,
+      "unit": "ratio",
+      "sampleSize": 57,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 1,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-013",
+      "kind": "structural",
+      "statement": "Simulação no ts-fsrs: 'Difícil' nunca gradua a carta — 6 toques mantêm estado=learning, intervalo=0d, e a dificuldade sobe de 5,1 para 9,3. Com 'Bom', gradua na 2ª revisão e chega a 498d na 6ª.",
+      "source": {
+        "type": "code",
+        "ref": "ts-fsrs",
+        "query": "simulação: fsrs().next(card, t, Rating.Hard) x6"
+      },
+      "metric": "graduacao_com_hard",
+      "value": 0,
+      "unit": "count",
+      "sampleSize": 6,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 2,
+        "periodPoints": 0,
+        "deterministic": true
+      }
+    },
+    {
+      "id": "EV-014",
+      "kind": "measurement",
+      "statement": "A infraestrutura de RLS está completa em produção: papel studyos_app existe com rolbypassrls=false, e as 16 tabelas de tenant têm RLS ligado com 1 política cada.",
+      "source": {
+        "type": "database",
+        "ref": "pg_class/pg_roles",
+        "query": "select relname, relrowsecurity from pg_class join pg_namespace ..."
+      },
+      "metric": "tabelas_com_rls",
+      "value": 16,
+      "unit": "count",
+      "sampleSize": 16,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-015",
+      "kind": "absence",
+      "statement": "Não é possível verificar daqui para qual papel a variável APP_DATABASE_URL da Vercel aponta. Se apontar para neondb_owner (rolbypassrls=true), toda a política de RLS fica inativa em produção.",
+      "source": {
+        "type": "code",
+        "ref": "vercel env"
+      },
+      "metric": "papel_efetivo_producao",
+      "value": null,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-016",
+      "kind": "absence",
+      "statement": "Não existe instrumentação de navegação: nenhuma tabela de eventos, page view ou clique. Não dá para distinguir 'recurso ignorado' de 'recurso não encontrado'.",
+      "source": {
+        "type": "database",
+        "ref": "schema"
+      },
+      "metric": "eventos_navegacao",
+      "value": null,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-017",
+      "kind": "absence",
+      "statement": "Exportar, imprimir e publicar currículo não deixam registro. O uso dessas ações é inobservável.",
+      "source": {
+        "type": "database",
+        "ref": "schema"
+      },
+      "metric": "eventos_exportacao",
+      "value": null,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-018",
+      "kind": "measurement",
+      "statement": "5 aulas têm progresso de leitura registrado, média de 80%.",
+      "source": {
+        "type": "database",
+        "ref": "reading_progress",
+        "query": "select count(*), avg(percent) from reading_progress"
+      },
+      "metric": "aulas_com_progresso",
+      "value": 5,
+      "unit": "count",
+      "sampleSize": 5,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-019",
+      "kind": "measurement",
+      "statement": "6 provas geradas, 5 concluídas, nota média 90%.",
+      "source": {
+        "type": "database",
+        "ref": "exams",
+        "query": "select count(*), count(completed_at), avg(score_pct) from exams"
+      },
+      "metric": "provas",
+      "value": 6,
+      "unit": "count",
+      "sampleSize": 6,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-020",
+      "kind": "measurement",
+      "statement": "4 respostas do tutor registradas em 19 dias.",
+      "source": {
+        "type": "database",
+        "ref": "tutor_answers",
+        "query": "select count(*) from tutor_answers"
+      },
+      "metric": "respostas_tutor",
+      "value": 4,
+      "unit": "count",
+      "sampleSize": 4,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "medium",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    },
+    {
+      "id": "EV-021",
+      "kind": "absence",
+      "statement": "A importação de CV e de projetos do GitHub não registra evento — só o resultado. Não dá para medir tentativas, falhas nem itens descartados na revisão.",
+      "source": {
+        "type": "database",
+        "ref": "schema"
+      },
+      "metric": "eventos_importacao",
+      "value": null,
+      "period": {
+        "from": "2026-07-20",
+        "to": "2026-08-08"
+      },
+      "confidence": "high",
+      "confidenceInputs": {
+        "sourcePoints": 2,
+        "samplePoints": 0,
+        "periodPoints": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-001",
+      "type": "problem",
+      "title": "A escala de avaliação da revisão está colapsada",
+      "statement": "85% das avaliações são 'Difícil' e 'Fácil' nunca foi usada. No FSRS, 'Difícil' não gradua a carta: o estado fica em learning, o intervalo em zero e a dificuldade sobe a cada toque. O rótulo não revelava a consequência — honestidade sendo punida com repetição infinita.",
+      "deadReason": null,
+      "evidenceRefs": [
+        "EV-002",
+        "EV-003",
+        "EV-006",
+        "EV-013"
+      ]
+    },
+    {
+      "id": "F-002",
+      "type": "problem",
+      "title": "O uso da revisão está em queda livre",
+      "statement": "O volume semanal caiu 73% (262 → 71) e cada carta foi vista 6 vezes em 19 dias. É a área mais usada do produto esfriando por fadiga mecânica, não por desinteresse.",
+      "deadReason": null,
+      "evidenceRefs": [
+        "EV-005",
+        "EV-004",
+        "EV-001"
+      ]
+    },
+    {
+      "id": "F-003",
+      "type": "problem",
+      "title": "O campo next_step foi construído e nunca usado",
+      "statement": "0 de 32 anotações têm next_step, apesar de coluna, campo no editor e dica na agenda e no calendário estarem no ar.",
+      "deadReason": "construido-e-ignorado",
+      "evidenceRefs": [
+        "EV-007"
+      ]
+    },
+    {
+      "id": "F-004",
+      "type": "problem",
+      "title": "Certificações ocupa o menu principal com zero uso",
+      "statement": "A tabela tem 0 linhas em 19 dias. Rota, formulário e integração com o currículo estão prontos. É a única área vazia com destaque de navegação — mas sem instrumentação de navegação não dá para separar 'não encontrei' de 'não tenho o que registrar'.",
+      "deadReason": "construido-e-ignorado",
+      "evidenceRefs": [
+        "EV-008",
+        "EV-016"
+      ]
+    },
+    {
+      "id": "F-005",
+      "type": "problem",
+      "title": "Materiais perdeu para Aulas dentro do próprio produto",
+      "statement": "2 linhas, ambas criadas no dia em que a proposta de expansão foi escrita, ambas com 0% de progresso — contra 22 aulas lidas dentro do app. Um material é um link que tira o usuário do sistema; uma aula é lida com sumário, progresso e anotações ancoradas.",
+      "deadReason": "perdeu-para-algo-melhor",
+      "evidenceRefs": [
+        "EV-009",
+        "EV-010"
+      ]
+    },
+    {
+      "id": "F-006",
+      "type": "gap",
+      "title": "Não é verificável se o RLS está ativo em produção",
+      "statement": "A infraestrutura está completa: papel restrito sem BYPASSRLS e 16 tabelas com política. Falta saber para qual papel APP_DATABASE_URL aponta na Vercel — e isso não é observável a partir do código nem do banco. Se apontar para o owner, todo o isolamento descrito no README está inativo.",
+      "deadReason": null,
+      "evidenceRefs": [
+        "EV-014",
+        "EV-015"
+      ]
+    },
+    {
+      "id": "F-007",
+      "type": "anomaly",
+      "title": "O catálogo de estudo está congelado",
+      "statement": "Nenhum tópico novo desde 29/jul e 77% seguem em 'todo'. O uso migrou de expandir o catálogo para aprofundar o que já existe — o que explica objetivos e tópicos parados sem que isso seja um problema.",
+      "deadReason": null,
+      "evidenceRefs": [
+        "EV-012"
+      ]
+    },
+    {
+      "id": "F-008",
+      "type": "gap",
+      "title": "O produto é cego para navegação e para as próprias exportações",
+      "statement": "Não há registro de page view, clique, exportação de currículo nem tentativa de importação. Três jornadas relevantes são inobserváveis, o que impede distinguir recurso ignorado de recurso não encontrado.",
+      "deadReason": null,
+      "evidenceRefs": [
+        "EV-016",
+        "EV-017",
+        "EV-021"
+      ]
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "O-001",
+      "title": "Confirmar para qual papel APP_DATABASE_URL aponta na Vercel",
+      "userOutcome": "O isolamento por tenant que o produto promete passa a valer de fato em produção.",
+      "track": "investigar",
+      "trackReason": "Não é construção: a infraestrutura já existe. É uma verificação de configuração que só o dono do projeto consegue fazer.",
+      "findingRefs": [
+        "F-006"
+      ],
+      "evidenceRefs": [
+        "EV-014",
+        "EV-015"
+      ],
+      "dimensions": {
+        "impact": 5,
+        "reach": 5,
+        "cost": 1,
+        "evidence": 4
+      },
+      "rationale": {
+        "impact": "Se estiver errado, o isolamento de dados está inativo em produção — o risco mais alto do inventário.",
+        "reach": "Afeta 100% das tabelas e 100% dos acessos.",
+        "cost": "Ler uma variável de ambiente e, se preciso, trocá-la."
+      },
+      "size": "P",
+      "score": 80
+    },
+    {
+      "id": "O-002",
+      "title": "Medir o efeito do intervalo nos botões de revisão",
+      "userOutcome": "Saber se mostrar o preço de cada nota destrava as cartas, antes de mexer mais na revisão.",
+      "track": "validar",
+      "trackReason": "O conserto subiu em 08/ago; o portão já existe e a régua está definida.",
+      "findingRefs": [
+        "F-001",
+        "F-002"
+      ],
+      "evidenceRefs": [
+        "EV-002",
+        "EV-003",
+        "EV-005"
+      ],
+      "dimensions": {
+        "impact": 4,
+        "reach": 4,
+        "cost": 1,
+        "evidence": 5
+      },
+      "rationale": {
+        "impact": "Ataca a causa medida do colapso da escala na área mais usada do produto.",
+        "reach": "Toda revisão passa por esses botões.",
+        "cost": "Já está no ar; falta observar."
+      },
+      "size": "P",
+      "gate": {
+        "metric": "share_bom_mais_facil",
+        "baseline": 0.152,
+        "baselineEvidenceRef": "EV-002",
+        "target": 0.35,
+        "decideBy": "2026-08-15"
+      },
+      "score": 64
+    },
+    {
+      "id": "O-003",
+      "title": "Instrumentar navegação e exportações",
+      "userOutcome": "Passar a distinguir recurso ignorado de recurso não encontrado, em vez de adivinhar.",
+      "track": "instrumentar",
+      "trackReason": "Três jornadas relevantes são inobserváveis; sem isso, decisões sobre remover ou promover recursos são palpite.",
+      "findingRefs": [
+        "F-008",
+        "F-004"
+      ],
+      "evidenceRefs": [
+        "EV-016",
+        "EV-017",
+        "EV-021"
+      ],
+      "dimensions": {
+        "impact": 3,
+        "reach": 5,
+        "cost": 3,
+        "evidence": 5
+      },
+      "rationale": {
+        "impact": "Não muda o produto hoje; muda a qualidade de toda decisão futura.",
+        "reach": "Cobre todas as telas.",
+        "cost": "Tabela de eventos, escrita no servidor e cuidado com dado pessoal."
+      },
+      "size": "M",
+      "score": 20
+    },
+    {
+      "id": "O-005",
+      "title": "Tirar Certificações do menu principal",
+      "userOutcome": "A navegação passa a refletir o que se usa.",
+      "track": "validar",
+      "trackReason": "Sem instrumentação de navegação (O-003), não dá para saber se está vazio por falta de descoberta ou por falta de conteúdo a registrar. Remover agora seria decidir sem dado.",
+      "findingRefs": [
+        "F-004"
+      ],
+      "evidenceRefs": [
+        "EV-008",
+        "EV-016"
+      ],
+      "dimensions": {
+        "impact": 2,
+        "reach": 2,
+        "cost": 1,
+        "evidence": 4
+      },
+      "rationale": {
+        "impact": "Ganho de clareza, sem efeito sobre capacidade.",
+        "reach": "Um item de menu.",
+        "cost": "Uma linha no AppShell."
+      },
+      "size": "P",
+      "gate": {
+        "metric": "certificacoes_linhas",
+        "baseline": 0,
+        "baselineEvidenceRef": "EV-008",
+        "target": 1,
+        "decideBy": "2026-09-08"
+      },
+      "score": 13
+    },
+    {
+      "id": "O-004",
+      "title": "Remover o campo next_step ou transformá-lo em sugestão da IA",
+      "userOutcome": "Menos ruído no formulário mais usado do app, sem perder a intenção original.",
+      "track": "construir",
+      "trackReason": "O dado é conclusivo: nunca usado em 32 oportunidades.",
+      "findingRefs": [
+        "F-003"
+      ],
+      "evidenceRefs": [
+        "EV-007"
+      ],
+      "dimensions": {
+        "impact": 2,
+        "reach": 3,
+        "cost": 1,
+        "evidence": 2
+      },
+      "rationale": {
+        "impact": "Remove peso morto; não destrava nada novo.",
+        "reach": "Aparece no editor de anotação, na agenda e no calendário.",
+        "cost": "Remoção de campo e de dois componentes de exibição."
+      },
+      "size": "P",
+      "score": 10
+    },
+    {
+      "id": "O-007",
+      "title": "Gerar mais flashcards para aumentar o volume de revisão",
+      "userOutcome": "—",
+      "track": "nao-construir",
+      "trackReason": "O gargalo é calibração, não volume: 84 cartas já produzem 6 revisões cada e o uso caiu 73%. Mais cartas pioram a fadiga medida.",
+      "findingRefs": [
+        "F-002",
+        "F-001"
+      ],
+      "evidenceRefs": [
+        "EV-004",
+        "EV-005"
+      ],
+      "dimensions": {
+        "impact": 1,
+        "reach": 2,
+        "cost": 2,
+        "evidence": 5
+      },
+      "rationale": {
+        "impact": "Agrava o problema medido.",
+        "reach": "Toda a revisão.",
+        "cost": "Geração já existe; o custo é o dano."
+      },
+      "size": "M",
+      "score": 4
+    },
+    {
+      "id": "O-006",
+      "title": "Expandir Materiais com coleções, tags e busca",
+      "userOutcome": "—",
+      "track": "nao-construir",
+      "trackReason": "2 linhas criadas no mesmo dia e 0 vínculos com sessões ou aulas. Construir biblioteca sobre isso é mobiliar casa vazia. O portão de 22/ago decide.",
+      "findingRefs": [
+        "F-005"
+      ],
+      "evidenceRefs": [
+        "EV-009",
+        "EV-010"
+      ],
+      "dimensions": {
+        "impact": 1,
+        "reach": 1,
+        "cost": 3,
+        "evidence": 3
+      },
+      "rationale": {
+        "impact": "Nenhum uso medido para sustentar.",
+        "reach": "2 registros.",
+        "cost": "5 fases na proposta original."
+      },
+      "size": "G",
+      "gate": {
+        "metric": "sessoes_com_material",
+        "baseline": 0,
+        "baselineEvidenceRef": "EV-010",
+        "target": 5,
+        "decideBy": "2026-08-22"
+      },
+      "score": 1
+    },
+    {
+      "id": "O-008",
+      "title": "Criar novos módulos em Tópicos e Objetivos",
+      "userOutcome": "—",
+      "track": "nao-construir",
+      "trackReason": "Congelados desde 29/jul com 77% em 'todo'. O uso migrou para aprofundar, não expandir.",
+      "findingRefs": [
+        "F-007"
+      ],
+      "evidenceRefs": [
+        "EV-012"
+      ],
+      "dimensions": {
+        "impact": 1,
+        "reach": 2,
+        "cost": 3,
+        "evidence": 2
+      },
+      "rationale": {
+        "impact": "Sem sinal de demanda.",
+        "reach": "57 tópicos parados.",
+        "cost": "Área grande."
+      },
+      "size": "G",
+      "score": 1
+    }
+  ],
+  "health": {
+    "dimensions": [
+      {
+        "name": "adocao",
+        "measured": true,
+        "score": 55,
+        "evidenceRefs": [
+          "EV-008",
+          "EV-009",
+          "EV-012"
+        ]
+      },
+      {
+        "name": "engajamento",
+        "measured": true,
+        "score": 27,
+        "evidenceRefs": [
+          "EV-005"
+        ]
+      },
+      {
+        "name": "retencao",
+        "measured": false,
+        "score": null,
+        "evidenceRefs": []
+      },
+      {
+        "name": "conversao",
+        "measured": false,
+        "score": null,
+        "evidenceRefs": []
+      },
+      {
+        "name": "qualidade",
+        "measured": true,
+        "score": 20,
+        "evidenceRefs": [
+          "EV-003",
+          "EV-002"
+        ]
+      },
+      {
+        "name": "instrumentacao",
+        "measured": true,
+        "score": 70,
+        "evidenceRefs": [
+          "EV-016",
+          "EV-017",
+          "EV-021"
+        ]
+      }
+    ],
+    "score": 43,
+    "confidence": "low",
+    "confidenceReason": "Período de 19 dias (abaixo de 30) e um único usuário: nenhuma evidência recebe ponto de período, e não há base para retenção ou conversão. instrumentedRatio 0.7 passou do gate de 0,6, então o score foi calculado — mas com essa ressalva."
+  }
+}
