@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, ArrowLeft, CalendarCheck } from "lucide-react";
 import { recordReviewAction } from "@/app/_actions/reviews";
+import type { IntervalPreview } from "@/domain/reviews/scheduler";
 
 type QueueItem = {
   flashcardId: string;
@@ -11,6 +12,7 @@ type QueueItem = {
   back: string;
   topicTitle: string;
   goalTitle: string;
+  preview: IntervalPreview;
 };
 
 const RATINGS = [
@@ -19,6 +21,22 @@ const RATINGS = [
   { value: 3, label: "Bom", cls: "border-line text-faculdade hover:bg-faculdade-soft" },
   { value: 4, label: "Fácil", cls: "border-line text-profissional hover:bg-profissional-soft" },
 ] as const;
+
+/**
+ * Quando a carta volta, por extenso.
+ *
+ * O rótulo sozinho mentia por omissão: "Difícil" não gradua a carta no FSRS, e
+ * 424 toques renderam 457 revisões presas em `learning`. Mostrar o preço torna
+ * a escolha informada — quem quiser dizer "difícil" continua podendo, sabendo
+ * que a carta volta hoje.
+ */
+function quando(dias: number): string {
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "amanhã";
+  if (dias < 30) return `${dias}d`;
+  if (dias < 365) return `${Math.round(dias / 30)}m`;
+  return `${(dias / 365).toFixed(dias < 730 ? 1 : 0)}a`;
+}
 
 export function ReviewSession({ queue }: { queue: QueueItem[] }) {
   // Freeze the queue at mount. Every Server Action auto-refreshes this route,
@@ -112,9 +130,13 @@ export function ReviewSession({ queue }: { queue: QueueItem[] }) {
               key={r.value}
               onClick={() => rate(r.value)}
               disabled={pending}
-              className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${r.cls}`}
+              aria-label={`${r.label} — volta ${quando(current.preview[r.value])}`}
+              className={`flex flex-col items-center gap-0.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${r.cls}`}
             >
               {r.label}
+              <span className="text-[11px] font-normal tabular-nums opacity-70">
+                {quando(current.preview[r.value])}
+              </span>
             </button>
           ))}
         </div>

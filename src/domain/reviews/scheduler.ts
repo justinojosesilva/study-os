@@ -45,6 +45,31 @@ export function scheduleNext(card: Card, rating: Grade, now: Date = new Date()):
   return scheduler.next(card, now, rating).card;
 }
 
+/** Dias até a próxima revisão para cada uma das quatro notas. */
+export type IntervalPreview = { 1: number; 2: number; 3: number; 4: number };
+
+/**
+ * O que cada botão CUSTA, sem gravar nada.
+ *
+ * Existe porque a escala mentia por omissão. "Difícil" não gradua a carta no
+ * FSRS: o estado fica em `learning`, o intervalo fica em zero e a dificuldade
+ * sobe a cada toque — medido na biblioteca, 5,1 → 9,3 em seis repetições. Em
+ * produção isso rendeu 457 de 500 revisões presas em `learning` e 424 toques
+ * em "Difícil", porque nada na tela ligava o rótulo à consequência.
+ *
+ * `repeat` devolve as quatro saídas possíveis sem persistir, então o rótulo
+ * passa a mostrar o preço da escolha — a correção clássica do Anki.
+ */
+export function previewIntervals(card: Card, now: Date = new Date()): IntervalPreview {
+  const r = scheduler.repeat(card, now);
+  return {
+    1: r[1].card.scheduled_days,
+    2: r[2].card.scheduled_days,
+    3: r[3].card.scheduled_days,
+    4: r[4].card.scheduled_days,
+  };
+}
+
 /** Flatten an FSRS Card into the columns persisted on a topic_reviews row. */
 export function cardToColumns(card: Card) {
   return {

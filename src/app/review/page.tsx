@@ -27,6 +27,7 @@ export default async function ReviewPage() {
           back: q.back,
           topicTitle: q.topicTitle,
           goalTitle: q.goalTitle,
+          preview: q.preview,
         }))}
       />
 

@@ -8,7 +8,13 @@ import {
   type FlashcardReview,
 } from "@/infra/db/schema";
 import { and, eq, desc, inArray } from "drizzle-orm";
-import type { StoredCard } from "./scheduler";
+import {
+  previewIntervals,
+  toCard,
+  newCard,
+  type StoredCard,
+  type IntervalPreview,
+} from "./scheduler";
 
 export type DueCard = {
   flashcardId: string;
@@ -17,6 +23,8 @@ export type DueCard = {
   topicTitle: string;
   goalTitle: string;
   due: Date | null; // null = never reviewed (a fresh card)
+  /** Dias até a próxima revisão para cada nota — o preço de cada botão. */
+  preview: IntervalPreview;
 };
 
 export function reviewToStoredCard(r: FlashcardReview): StoredCard {
@@ -109,6 +117,8 @@ export async function listDueCards(
         topicTitle: c.topicTitle,
         goalTitle: c.goalTitle,
         due: r?.due ?? null,
+        // Sem consulta extra: a última revisão de cada carta já está em `latest`.
+        preview: previewIntervals(r ? toCard(reviewToStoredCard(r)) : newCard(now), now),
       });
     }
   }
