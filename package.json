@@ -17,7 +17,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:backfill": "tsx scripts/backfill-sessions.ts",
     "db:backfill-reviews": "tsx scripts/backfill-reviews.ts",
-    "db:migrate-notes": "tsx scripts/migrate-notes.ts"
+    "db:migrate-notes": "tsx scripts/migrate-notes.ts",
+    "db:verify-rls": "tsx scripts/verify-rls.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.1",
