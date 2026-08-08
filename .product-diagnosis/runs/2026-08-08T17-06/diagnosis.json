@@ -617,7 +617,7 @@
   ],
   "findings": [
     {
-      "id": "F-001",
+      "id": "FND-001",
       "type": "problem",
       "title": "A escala de avaliação da revisão está colapsada",
       "statement": "85% das avaliações são 'Difícil' e 'Fácil' nunca foi usada. No FSRS, 'Difícil' não gradua a carta: o estado fica em learning, o intervalo em zero e a dificuldade sobe a cada toque. O rótulo não revelava a consequência — honestidade sendo punida com repetição infinita.",
@@ -630,7 +630,7 @@
       ]
     },
     {
-      "id": "F-002",
+      "id": "FND-002",
       "type": "problem",
       "title": "O uso da revisão está em queda livre",
       "statement": "O volume semanal caiu 73% (262 → 71) e cada carta foi vista 6 vezes em 19 dias. É a área mais usada do produto esfriando por fadiga mecânica, não por desinteresse.",
@@ -642,7 +642,7 @@
       ]
     },
     {
-      "id": "F-003",
+      "id": "FND-003",
       "type": "problem",
       "title": "O campo next_step foi construído e nunca usado",
       "statement": "0 de 32 anotações têm next_step, apesar de coluna, campo no editor e dica na agenda e no calendário estarem no ar.",
@@ -652,7 +652,7 @@
       ]
     },
     {
-      "id": "F-004",
+      "id": "FND-004",
       "type": "problem",
       "title": "Certificações ocupa o menu principal com zero uso",
       "statement": "A tabela tem 0 linhas em 19 dias. Rota, formulário e integração com o currículo estão prontos. É a única área vazia com destaque de navegação — mas sem instrumentação de navegação não dá para separar 'não encontrei' de 'não tenho o que registrar'.",
@@ -663,7 +663,7 @@
       ]
     },
     {
-      "id": "F-005",
+      "id": "FND-005",
       "type": "problem",
       "title": "Materiais perdeu para Aulas dentro do próprio produto",
       "statement": "2 linhas, ambas criadas no dia em que a proposta de expansão foi escrita, ambas com 0% de progresso — contra 22 aulas lidas dentro do app. Um material é um link que tira o usuário do sistema; uma aula é lida com sumário, progresso e anotações ancoradas.",
@@ -674,7 +674,7 @@
       ]
     },
     {
-      "id": "F-006",
+      "id": "FND-006",
       "type": "gap",
       "title": "Não é verificável se o RLS está ativo em produção",
       "statement": "A infraestrutura está completa: papel restrito sem BYPASSRLS e 16 tabelas com política. Falta saber para qual papel APP_DATABASE_URL aponta na Vercel — e isso não é observável a partir do código nem do banco. Se apontar para o owner, todo o isolamento descrito no README está inativo.",
@@ -685,7 +685,7 @@
       ]
     },
     {
-      "id": "F-007",
+      "id": "FND-007",
       "type": "anomaly",
       "title": "O catálogo de estudo está congelado",
       "statement": "Nenhum tópico novo desde 29/jul e 77% seguem em 'todo'. O uso migrou de expandir o catálogo para aprofundar o que já existe — o que explica objetivos e tópicos parados sem que isso seja um problema.",
@@ -695,7 +695,7 @@
       ]
     },
     {
-      "id": "F-008",
+      "id": "FND-008",
       "type": "gap",
       "title": "O produto é cego para navegação e para as próprias exportações",
       "statement": "Não há registro de page view, clique, exportação de currículo nem tentativa de importação. Três jornadas relevantes são inobserváveis, o que impede distinguir recurso ignorado de recurso não encontrado.",
@@ -709,13 +709,13 @@
   ],
   "opportunities": [
     {
-      "id": "O-001",
+      "id": "OPP-001",
       "title": "Confirmar para qual papel APP_DATABASE_URL aponta na Vercel",
       "userOutcome": "O isolamento por tenant que o produto promete passa a valer de fato em produção.",
       "track": "investigar",
       "trackReason": "Não é construção: a infraestrutura já existe. É uma verificação de configuração que só o dono do projeto consegue fazer.",
       "findingRefs": [
-        "F-006"
+        "FND-006"
       ],
       "evidenceRefs": [
         "EV-014",
@@ -736,14 +736,14 @@
       "score": 80
     },
     {
-      "id": "O-002",
+      "id": "OPP-002",
       "title": "Medir o efeito do intervalo nos botões de revisão",
       "userOutcome": "Saber se mostrar o preço de cada nota destrava as cartas, antes de mexer mais na revisão.",
       "track": "validar",
       "trackReason": "O conserto subiu em 08/ago; o portão já existe e a régua está definida.",
       "findingRefs": [
-        "F-001",
-        "F-002"
+        "FND-001",
+        "FND-002"
       ],
       "evidenceRefs": [
         "EV-002",
@@ -772,14 +772,14 @@
       "score": 64
     },
     {
-      "id": "O-003",
+      "id": "OPP-003",
       "title": "Instrumentar navegação e exportações",
       "userOutcome": "Passar a distinguir recurso ignorado de recurso não encontrado, em vez de adivinhar.",
       "track": "instrumentar",
       "trackReason": "Três jornadas relevantes são inobserváveis; sem isso, decisões sobre remover ou promover recursos são palpite.",
       "findingRefs": [
-        "F-008",
-        "F-004"
+        "FND-008",
+        "FND-004"
       ],
       "evidenceRefs": [
         "EV-016",
@@ -801,13 +801,13 @@
       "score": 20
     },
     {
-      "id": "O-005",
+      "id": "OPP-005",
       "title": "Tirar Certificações do menu principal",
       "userOutcome": "A navegação passa a refletir o que se usa.",
       "track": "validar",
       "trackReason": "Sem instrumentação de navegação (O-003), não dá para saber se está vazio por falta de descoberta ou por falta de conteúdo a registrar. Remover agora seria decidir sem dado.",
       "findingRefs": [
-        "F-004"
+        "FND-004"
       ],
       "evidenceRefs": [
         "EV-008",
@@ -835,13 +835,13 @@
       "score": 13
     },
     {
-      "id": "O-004",
+      "id": "OPP-004",
       "title": "Remover o campo next_step ou transformá-lo em sugestão da IA",
       "userOutcome": "Menos ruído no formulário mais usado do app, sem perder a intenção original.",
       "track": "construir",
       "trackReason": "O dado é conclusivo: nunca usado em 32 oportunidades.",
       "findingRefs": [
-        "F-003"
+        "FND-003"
       ],
       "evidenceRefs": [
         "EV-007"
@@ -861,14 +861,14 @@
       "score": 10
     },
     {
-      "id": "O-007",
+      "id": "OPP-007",
       "title": "Gerar mais flashcards para aumentar o volume de revisão",
       "userOutcome": "—",
       "track": "nao-construir",
       "trackReason": "O gargalo é calibração, não volume: 84 cartas já produzem 6 revisões cada e o uso caiu 73%. Mais cartas pioram a fadiga medida.",
       "findingRefs": [
-        "F-002",
-        "F-001"
+        "FND-002",
+        "FND-001"
       ],
       "evidenceRefs": [
         "EV-004",
@@ -889,13 +889,13 @@
       "score": 4
     },
     {
-      "id": "O-006",
+      "id": "OPP-006",
       "title": "Expandir Materiais com coleções, tags e busca",
       "userOutcome": "—",
       "track": "nao-construir",
       "trackReason": "2 linhas criadas no mesmo dia e 0 vínculos com sessões ou aulas. Construir biblioteca sobre isso é mobiliar casa vazia. O portão de 22/ago decide.",
       "findingRefs": [
-        "F-005"
+        "FND-005"
       ],
       "evidenceRefs": [
         "EV-009",
@@ -923,13 +923,13 @@
       "score": 1
     },
     {
-      "id": "O-008",
+      "id": "OPP-008",
       "title": "Criar novos módulos em Tópicos e Objetivos",
       "userOutcome": "—",
       "track": "nao-construir",
       "trackReason": "Congelados desde 29/jul com 77% em 'todo'. O uso migrou para aprofundar, não expandir.",
       "findingRefs": [
-        "F-007"
+        "FND-007"
       ],
       "evidenceRefs": [
         "EV-012"

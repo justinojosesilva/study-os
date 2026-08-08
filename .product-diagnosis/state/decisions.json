@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "DEC-001",
+    "date": "2026-08-08",
+    "decision": "Mostrar o intervalo resultante em cada botão da revisão, em vez de trocar os rótulos ou regerar as cartas.",
+    "reason": "A escala estava colapsada — 424 de 500 avaliações em 'Difícil', 'Fácil' nunca clicada, 91% das revisões presas em `learning`. Simulação no ts-fsrs provou a causa: 'Difícil' não gradua a carta, o intervalo fica em zero e a dificuldade sobe a cada toque. O rótulo não revelava a consequência. Medido depois: 'Bom'+'Fácil' foi de 15,0% para 83,8% em 74 revisões, sem uma única carta reescrita — o que confirma que o problema era calibração, não conteúdo.",
+    "opportunityRef": "OPP-002",
+    "runRef": "runs/2026-08-08T17-06",
+    "evidenceRefs": [
+      "EV-002",
+      "EV-003",
+      "EV-006",
+      "EV-013"
+    ],
+    "alternative": "Regerar os flashcards com dificuldade calibrada (rejeitado: trataria sintoma) e zerar o agendamento das 84 cartas (rejeitado por medição — as cartas graduam no próximo 'Bom' e já vão a 7 dias, enquanto zerar custaria ~250 revisões para reencontrar o mesmo ponto).",
+    "owner": "Justino",
+    "reviewBy": "2026-08-22",
+    "status": "ativa"
+  }
+]

@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "id": "EXP-001",
+    "opportunityRef": "OPP-002",
+    "runRef": "runs/2026-08-08T17-06",
+    "hypothesis": "Se cada botão mostrar quando a carta volta, a escolha vira informada e a distribuição das notas deixa de se concentrar em 'Difícil'. Resultado parcial em 08/08: 83,8% em 74 revisões, contra meta de 35%. Segue rodando porque uma sessão só carrega efeito de novidade; critério de estabilização em 22/08 é ficar acima de 60%.",
+    "change": "Cada botão da revisão passou a exibir o intervalo resultante, calculado com scheduler.repeat().",
+    "metric": "share_bom_mais_facil",
+    "baseline": 0.15,
+    "baselineEvidenceRef": "EV-002",
+    "target": 0.35,
+    "result": 0.838,
+    "sampleSize": 74,
+    "startedAt": "2026-08-08",
+    "endsAt": "2026-08-22",
+    "status": "rodando",
+    "outcome": null
+  }
+]
