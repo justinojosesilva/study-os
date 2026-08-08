@@ -58,7 +58,9 @@ export function CareerImportDialog() {
   }
 
   const total =
-    (extraction?.experiences.length ?? 0) + (extraction?.projects.length ?? 0);
+    (extraction?.experiences.length ?? 0) +
+    (extraction?.projects.length ?? 0) +
+    (extraction?.certifications.length ?? 0);
 
   return (
     <>
@@ -193,6 +195,23 @@ export function CareerImportDialog() {
                     setExtraction({
                       ...extraction,
                       experiences: extraction.experiences.filter((_, k) => k !== i),
+                    })
+                  }
+                />
+
+                <ReviewList
+                  title={`Certificações (${extraction.certifications.length})`}
+                  empty="Nenhuma certificação encontrada."
+                  items={extraction.certifications.map((c, i) => ({
+                    key: i,
+                    primary: c.title,
+                    secondary: [c.provider, c.code].filter(Boolean).join(" · "),
+                    tertiary: c.obtainedDate ?? "",
+                  }))}
+                  onRemove={(i) =>
+                    setExtraction({
+                      ...extraction,
+                      certifications: extraction.certifications.filter((_, k) => k !== i),
                     })
                   }
                 />

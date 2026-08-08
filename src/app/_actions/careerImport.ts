@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { scoped } from "@/domain/auth";
 import { createExperience, createProject } from "@/domain/resume/career";
+import { createCertification } from "@/domain/certifications/repository";
 import { extractCareer, type CareerExtraction } from "@/domain/ai/careerImport";
 
 /**
@@ -46,8 +47,15 @@ export async function importCareerAction(fd: FormData): Promise<ImportResult> {
 }
 
 export type ConfirmResult =
-  | { ok: true; experiences: number; projects: number }
+  | { ok: true; experiences: number; projects: number; certifications: number }
   | { ok: false; error: string };
+
+/** "2019-06" -> Date. Null quando o documento não trouxe a data. */
+function mesParaData(ym: string | null): Date | null {
+  if (!ym || !/^\d{4}-(0[1-9]|1[0-2])$/.test(ym)) return null;
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1));
+}
 
 /** Grava o que a pessoa revisou. Só aqui existe escrita. */
 export async function confirmCareerImportAction(
@@ -55,8 +63,9 @@ export async function confirmCareerImportAction(
 ): Promise<ConfirmResult> {
   const experiences = data.experiences.filter((e) => e.company.trim() && e.role.trim());
   const projects = data.projects.filter((p) => p.title.trim());
+  const certs = data.certifications.filter((c) => c.title.trim() && c.provider.trim());
 
-  if (experiences.length === 0 && projects.length === 0) {
+  if (experiences.length === 0 && projects.length === 0 && certs.length === 0) {
     return { ok: false, error: "Nada para importar." };
   }
 
@@ -86,7 +95,26 @@ export async function confirmCareerImportAction(
         sortOrder: i,
       });
     }
+    // Estar no currículo significa obtida — daí `passed`, e não o default
+    // `planned`. É o status que o gerador de currículo lê.
+    for (const c of certs) {
+      await createCertification({
+        ownerId,
+        title: c.title.trim(),
+        provider: c.provider.trim(),
+        code: c.code,
+        status: "passed",
+        obtainedDate: mesParaData(c.obtainedDate),
+      });
+    }
+
     revalidatePath("/curriculo");
-    return { ok: true, experiences: experiences.length, projects: projects.length };
+    revalidatePath("/certifications");
+    return {
+      ok: true,
+      experiences: experiences.length,
+      projects: projects.length,
+      certifications: certs.length,
+    };
   });
 }

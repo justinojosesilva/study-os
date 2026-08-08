@@ -38,9 +38,20 @@ const ProjectSchema = z.object({
   techs: z.array(z.string()),
 });
 
+const CertificationSchema = z.object({
+  title: z.string(),
+  /** Quem emite: AWS, Google Cloud, Microsoft, Oracle, CNCF… */
+  provider: z.string(),
+  /** Código do exame quando aparecer, tipo "SAA-C03". Null se não houver. */
+  code: z.string().nullable(),
+  /** "AAAA-MM" de quando foi obtida, ou null se o documento não disser. */
+  obtainedDate: z.string().nullable(),
+});
+
 export const CareerExtractionSchema = z.object({
   experiences: z.array(ExperienceSchema),
   projects: z.array(ProjectSchema),
+  certifications: z.array(CertificationSchema),
   /** O que o modelo NÃO conseguiu determinar. Vira aviso na tela de revisão. */
   uncertain: z.array(z.string()),
 });
@@ -48,6 +59,7 @@ export const CareerExtractionSchema = z.object({
 export type CareerExtraction = z.infer<typeof CareerExtractionSchema>;
 export type ExtractedExperience = z.infer<typeof ExperienceSchema>;
 export type ExtractedProject = z.infer<typeof ProjectSchema>;
+export type ExtractedCertification = z.infer<typeof CertificationSchema>;
 
 export type CareerExtractionResult =
   | { ok: true; data: CareerExtraction; mocked: boolean }
@@ -63,6 +75,9 @@ REGRAS:
   se for muito longo. Não reescreva em linguagem de marketing.
 - techs: só tecnologias explicitamente citadas naquele item. Lista vazia se não houver.
 - projects: só projetos apresentados como projeto. NÃO transforme cargo em projeto.
+- certifications: só credenciais de exame de fornecedor (AWS, Oracle, Microsoft, CNCF,
+  Scrum Alliance…). NÃO inclua curso concluído, graduação, pós, bootcamp nem workshop —
+  certificação exige exame de terceiro. Lista vazia se não houver nenhuma.
 - uncertain: liste em português o que ficou ambíguo ou ilegível (ex.: "a data de saída da
   Empresa X não estava clara"). Lista vazia se estiver tudo claro.
 - Ordene as experiências da mais recente para a mais antiga.`;
@@ -135,6 +150,7 @@ function mockExtraction(): CareerExtraction {
       },
     ],
     projects: [],
+    certifications: [],
     uncertain: ["Modo de demonstração: nenhum documento foi lido de verdade."],
   };
 }
