@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 import type { RepoDetail } from "@/domain/github/repos";
 
 /**
@@ -28,8 +29,7 @@ export const GithubProjectsSchema = z.object({
 export type GithubProjectDraft = z.infer<typeof ProjectSchema>;
 
 export type GithubProjectsResult =
-  | { ok: true; projects: GithubProjectDraft[]; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; projects: GithubProjectDraft[]; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você transforma repositórios do GitHub em entradas de portfólio para currículo.
 
@@ -45,7 +45,10 @@ REGRAS:
 - Não escreva superlativo ("robusto", "escalável", "de ponta") sem evidência.
 - Devolva um item para CADA repositório recebido, mantendo o campo repo igual.`;
 
-export async function describeRepos(repos: RepoDetail[]): Promise<GithubProjectsResult> {
+export async function describeRepos(
+  ownerId: string,
+  repos: RepoDetail[],
+): Promise<GithubProjectsResult> {
   if (repos.length === 0) return { ok: false, error: "Nenhum repositório selecionado." };
 
   if (isMockMode()) {
@@ -76,22 +79,23 @@ export async function describeRepos(repos: RepoDetail[]): Promise<GithubProjects
     .join("\n\n---\n\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `Repositórios:\n\n${serialized}\n\nGere as entradas de portfólio.`,
-        },
-      ],
-      output_config: { format: zodOutputFormat(GithubProjectsSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "githubProjects", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [
+          {
+            role: "user",
+            content: `Repositórios:\n\n${serialized}\n\nGere as entradas de portfólio.`,
+          },
+        ],
+        output_config: { format: zodOutputFormat(GithubProjectsSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou as descrições." };
@@ -99,6 +103,9 @@ export async function describeRepos(repos: RepoDetail[]): Promise<GithubProjects
     return { ok: true, projects: res.parsed_output.projects, mocked: false };
   } catch (err) {
     console.error("githubProjects error", err);
-    return { ok: false, error: "Não foi possível descrever os projetos agora." };
+    return {
+      ok: false,
+      error: "Não foi possível descrever os projetos agora.",
+    };
   }
 }

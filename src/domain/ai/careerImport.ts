@@ -3,6 +3,7 @@ import { z } from "zod";
 // SDK não entrar no bundle. `import type` é apagado na compilação.
 import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * Extração da carreira a partir do currículo que a pessoa JÁ TEM.
@@ -62,8 +63,7 @@ export type ExtractedProject = z.infer<typeof ProjectSchema>;
 export type ExtractedCertification = z.infer<typeof CertificationSchema>;
 
 export type CareerExtractionResult =
-  | { ok: true; data: CareerExtraction; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: CareerExtraction; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você extrai o histórico profissional de um currículo e devolve dados estruturados.
 
@@ -84,11 +84,17 @@ REGRAS:
 
 type ExtractInput = { pdfBase64?: string; text?: string };
 
-export async function extractCareer(input: ExtractInput): Promise<CareerExtractionResult> {
+export async function extractCareer(
+  ownerId: string,
+  input: ExtractInput,
+): Promise<CareerExtractionResult> {
   const hasPdf = Boolean(input.pdfBase64);
   const text = input.text?.trim() ?? "";
   if (!hasPdf && !text) {
-    return { ok: false, error: "Envie o PDF do currículo ou cole o texto dele." };
+    return {
+      ok: false,
+      error: "Envie o PDF do currículo ou cole o texto dele.",
+    };
   }
 
   if (isMockMode()) {
@@ -96,10 +102,7 @@ export async function extractCareer(input: ExtractInput): Promise<CareerExtracti
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
     // O bloco `document` vem ANTES do texto — é a ordem que a API espera para
     // que a instrução se refira ao documento já lido.
     const content: ContentBlockParam[] = [];
@@ -116,23 +119,36 @@ export async function extractCareer(input: ExtractInput): Promise<CareerExtracti
     if (text) {
       content.push({ type: "text", text: `Currículo em texto:\n\n${text}` });
     }
-    content.push({ type: "text", text: "Extraia o histórico profissional deste currículo." });
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{ role: "user", content }],
-      output_config: { format: zodOutputFormat(CareerExtractionSchema) },
+    content.push({
+      type: "text",
+      text: "Extraia o histórico profissional deste currículo.",
     });
 
+    const chamada = await chamarModelo(ownerId, "careerImport", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 8192,
+        system: SYSTEM,
+        messages: [{ role: "user", content }],
+        output_config: { format: zodOutputFormat(CareerExtractionSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
+
     if (!res.parsed_output) {
-      return { ok: false, error: "Não consegui ler o currículo. Tente colar o texto." };
+      return {
+        ok: false,
+        error: "Não consegui ler o currículo. Tente colar o texto.",
+      };
     }
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("careerImport error", err);
-    return { ok: false, error: "Não foi possível ler o currículo agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível ler o currículo agora. Tente novamente.",
+    };
   }
 }
 

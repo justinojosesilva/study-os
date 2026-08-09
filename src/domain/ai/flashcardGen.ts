@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * AI flashcard generation. Given a topic (and optionally pasted content/notes),
@@ -14,25 +15,27 @@ export const GeneratedCardsSchema = z.object({
 export type GeneratedCard = { front: string; back: string };
 
 export type FlashcardGenResult =
-  | { ok: true; data: GeneratedCard[]; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: GeneratedCard[]; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você gera flashcards de estudo. Dado um tópico (e, se houver, conteúdo/anotações),
 crie de 5 a 8 flashcards concisos: front = pergunta clara e específica; back = resposta curta e
 correta. Evite perguntas triviais ou redundantes. Responda SEMPRE em português do Brasil.
 Se houver conteúdo colado, baseie os cards nele; caso contrário, use conhecimento do tópico.`;
 
-export async function generateFlashcards(input: {
-  topicTitle: string;
-  goalTitle: string;
-  content?: string;
-  /**
-   * When the caller IS a document — a note — the text is the subject, not extra
-   * context. Without this the topic title wins: a note about dependency
-   * injection filed under an "AWS Lambda" topic produced eight Lambda cards.
-   */
-  strictContent?: boolean;
-}): Promise<FlashcardGenResult> {
+export async function generateFlashcards(
+  ownerId: string,
+  input: {
+    topicTitle: string;
+    goalTitle: string;
+    content?: string;
+    /**
+     * When the caller IS a document — a note — the text is the subject, not extra
+     * context. Without this the topic title wins: a note about dependency
+     * injection filed under an "AWS Lambda" topic produced eight Lambda cards.
+     */
+    strictContent?: boolean;
+  },
+): Promise<FlashcardGenResult> {
   if (isMockMode()) {
     return { ok: true, data: mockCards(input.topicTitle), mocked: true };
   }
@@ -50,17 +53,18 @@ export async function generateFlashcards(input: {
     .join("\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(GeneratedCardsSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "flashcardGen", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: zodOutputFormat(GeneratedCardsSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou flashcards válidos." };
@@ -79,8 +83,14 @@ export async function generateFlashcards(input: {
 
 function mockCards(topic: string): GeneratedCard[] {
   return [
-    { front: `O que é ${topic}?`, back: `Definição de ${topic} (demonstração — configure a IA).` },
+    {
+      front: `O que é ${topic}?`,
+      back: `Definição de ${topic} (demonstração — configure a IA).`,
+    },
     { front: `Quando usar ${topic}?`, back: `Cenários de uso de ${topic}.` },
-    { front: `Um erro comum ao lidar com ${topic}?`, back: `Armadilha frequente em ${topic}.` },
+    {
+      front: `Um erro comum ao lidar com ${topic}?`,
+      back: `Armadilha frequente em ${topic}.`,
+    },
   ];
 }

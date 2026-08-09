@@ -1,4 +1,5 @@
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * AI tutor. Per topic, Claude can explain, generate practice exercises, or
@@ -9,8 +10,7 @@ import { MODEL, isMockMode } from "./config";
 export type TutorMode = "explain" | "exercises" | "summary";
 
 export type TutorResult =
-  | { ok: true; text: string; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; text: string; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um tutor de tecnologia, didático e direto. Ensina profissionais de TI.
 Responda em português do Brasil, em TEXTO SIMPLES e bem formatado — sem markdown (nada de #,
@@ -55,13 +55,16 @@ function notesBlock(notes: { title: string; content: string }[]): string | null 
   ].join("\n");
 }
 
-export async function askTutor(input: {
-  topicTitle: string;
-  goalTitle: string;
-  mode: TutorMode;
-  question?: string;
-  notes?: { title: string; content: string }[];
-}): Promise<TutorResult> {
+export async function askTutor(
+  ownerId: string,
+  input: {
+    topicTitle: string;
+    goalTitle: string;
+    mode: TutorMode;
+    question?: string;
+    notes?: { title: string; content: string }[];
+  },
+): Promise<TutorResult> {
   if (isMockMode()) {
     return { ok: true, text: mockText(input), mocked: true };
   }
@@ -76,15 +79,16 @@ export async function askTutor(input: {
     .join("\n\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic();
-
-    const res = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const chamada = await chamarModelo(ownerId, "tutor", (client) =>
+      client.messages.create({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     const text = res.content
       .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
@@ -96,15 +100,14 @@ export async function askTutor(input: {
     return { ok: true, text, mocked: false };
   } catch (err) {
     console.error("tutor error", err);
-    return { ok: false, error: "Não foi possível responder agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível responder agora. Tente novamente.",
+    };
   }
 }
 
-function mockText(input: {
-  topicTitle: string;
-  mode: TutorMode;
-  question?: string;
-}): string {
+function mockText(input: { topicTitle: string; mode: TutorMode; question?: string }): string {
   if (input.question?.trim()) {
     return `Resposta de demonstração sobre "${input.topicTitle}" para: "${input.question.trim()}".\n\nConfigure ANTHROPIC_API_KEY para respostas reais do tutor.`;
   }

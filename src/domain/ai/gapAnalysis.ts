@@ -3,6 +3,7 @@ import type { getGoalWithTopics } from "@/domain/goals/repository";
 import { CATEGORY } from "@/lib/categories";
 import { statusLabelPt } from "@/lib/topic-status";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>;
 
@@ -29,8 +30,7 @@ export const GapAnalysisSchema = z.object({
 export type GapAnalysis = z.infer<typeof GapAnalysisSchema>;
 
 export type AnalysisResult =
-  | { ok: true; data: GapAnalysis; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: GapAnalysis; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um mentor de carreira e estudos para profissionais de tecnologia.
 Dado um objetivo de estudo e o estado atual dos tópicos do usuário, faça uma análise de lacunas:
@@ -39,7 +39,10 @@ objetivo (gaps, com prioridade e um "why" curto), e sugira tópicos concretos e 
 adicionar ao plano (suggestedTopics — títulos curtos, no estilo dos tópicos existentes).
 Seja específico ao domínio do objetivo. Responda SEMPRE em português do Brasil, conciso e prático.`;
 
-export async function analyzeGoalGaps(goal: GoalWithTopics): Promise<AnalysisResult> {
+export async function analyzeGoalGaps(
+  ownerId: string,
+  goal: GoalWithTopics,
+): Promise<AnalysisResult> {
   const context = buildContext(goal);
 
   // Dev/demo path: no key or AI_MOCK=true → return a plausible canned analysis
@@ -49,17 +52,19 @@ export async function analyzeGoalGaps(goal: GoalWithTopics): Promise<AnalysisRes
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
 
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: context }],
-      output_config: { format: zodOutputFormat(GapAnalysisSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "gapAnalysis", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [{ role: "user", content: context }],
+        output_config: { format: zodOutputFormat(GapAnalysisSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou uma análise válida." };
@@ -95,7 +100,6 @@ function buildContext(goal: GoalWithTopics): string {
     .join("\n");
 }
 
-
 // ---------------------------------------------------------------------------
 // Mock — derives a plausible analysis from the goal's own data.
 // ---------------------------------------------------------------------------
@@ -110,10 +114,7 @@ function mockAnalysis(goal: GoalWithTopics): GapAnalysis {
   const gaps = inProgress.slice(0, 3).map((t, i) => ({
     skill: t,
     why: `Ainda não dominado e relevante para "${goal.title}".`,
-    priority: (i === 0 ? "alta" : i === 1 ? "média" : "baixa") as
-      | "alta"
-      | "média"
-      | "baixa",
+    priority: (i === 0 ? "alta" : i === 1 ? "média" : "baixa") as "alta" | "média" | "baixa",
   }));
 
   return {

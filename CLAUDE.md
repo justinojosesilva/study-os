@@ -53,8 +53,16 @@ npm run db:generate  # generate SQL migration from schema
 npm run db:migrate   # apply migrations
 npm run db:seed      # seed sample data; prints DEV_OWNER_ID to put in .env
 npm run db:studio    # Drizzle Studio
+npm run db:rls-table # enable RLS on ONE table: npm run db:rls-table -- ai_usage
 npm run dev          # Next dev server
 ```
 
 First-time setup: `cp .env.example .env` → `npm run db:up` → `npm run db:migrate`
 → `npm run db:seed` → paste printed `DEV_OWNER_ID` into `.env`.
+
+**Every new tenant table needs RLS, and `db:rls` is not how you add it.** That
+script rewrites the whole policy set *and* runs `ALTER ROLE studyos_app
+PASSWORD` as a side effect — running it in prod to protect one new table
+changes the app role's password. Use `db:rls-table` for tables added after the
+initial setup, and add the name to `TENANT_TABLES` in `scripts/setup-rls.ts` so
+a fresh database still gets it.

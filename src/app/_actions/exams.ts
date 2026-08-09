@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { scoped } from "@/domain/auth";
+import { scoped, getCurrentUserId } from "@/domain/auth";
+import { runAsOwner } from "@/infra/db/client";
 import { getGoalWithTopics } from "@/domain/goals/repository";
 import { generateExam } from "@/domain/ai/examGen";
 import { generateQuiz } from "@/domain/ai/quizGen";
@@ -15,18 +16,18 @@ import {
 } from "@/domain/exams/repository";
 
 export type GenerateExamResult =
-  | { ok: true; examId: string; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; examId: string; mocked: boolean } | { ok: false; error: string };
 
 const QUESTION_COUNT = 8;
 
 export async function generateExamAction(goalId: string): Promise<GenerateExamResult> {
   // Read tenant context in a short RLS-scoped transaction, then call the AI
   // outside it — the model call is slow and must not hold a DB transaction.
-  const goal = await scoped((ownerId) => getGoalWithTopics(ownerId, goalId));
+  const ownerId = await getCurrentUserId();
+  const goal = await runAsOwner(ownerId, () => getGoalWithTopics(ownerId, goalId));
   if (!goal) return { ok: false, error: "Objetivo não encontrado." };
 
-  const res = await generateExam(goal, QUESTION_COUNT);
+  const res = await generateExam(ownerId, goal, QUESTION_COUNT);
   if (!res.ok) return { ok: false, error: res.error };
 
   // Map the AI's topic titles back onto real topic ids — that link is what
@@ -34,7 +35,9 @@ export async function generateExamAction(goalId: string): Promise<GenerateExamRe
   // question, it just can't demote a topic.
   const byTitle = new Map(goal.topics.map((t) => [t.title.toLowerCase(), t.id]));
   const questions: NewQuestionInput[] = res.data.questions
-    .filter((q) => q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length)
+    .filter(
+      (q) => q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length,
+    )
     .map((q) => ({
       topicId: byTitle.get(q.topicTitle.toLowerCase()) ?? null,
       topicTitle: q.topicTitle,
@@ -45,7 +48,10 @@ export async function generateExamAction(goalId: string): Promise<GenerateExamRe
     }));
 
   if (questions.length === 0) {
-    return { ok: false, error: "A IA não retornou questões válidas. Tente novamente." };
+    return {
+      ok: false,
+      error: "A IA não retornou questões válidas. Tente novamente.",
+    };
   }
 
   const exam = await scoped((ownerId) => createExam(ownerId, goalId, questions));
@@ -53,9 +59,7 @@ export async function generateExamAction(goalId: string): Promise<GenerateExamRe
   return { ok: true, examId: exam.id, mocked: res.mocked };
 }
 
-export type SubmitExamResult =
-  | { ok: true; result: GradedResult }
-  | { ok: false; error: string };
+export type SubmitExamResult = { ok: true; result: GradedResult } | { ok: false; error: string };
 
 export async function submitExamAction(
   examId: string,
@@ -87,10 +91,12 @@ const QUIZ_QUESTION_COUNT = 8;
  * write back scoped.
  */
 export async function generateQuizAction(topicId: string): Promise<GenerateExamResult> {
-  const material = await scoped((ownerId) => getQuizMaterial(ownerId, topicId));
+  const ownerId = await getCurrentUserId();
+  const material = await runAsOwner(ownerId, () => getQuizMaterial(ownerId, topicId));
   if (!material) return { ok: false, error: "Tópico não encontrado." };
 
   const res = await generateQuiz(
+    ownerId,
     {
       topicTitle: material.topicTitle,
       goalTitle: material.goalTitle,
@@ -105,7 +111,9 @@ export async function generateQuizAction(topicId: string): Promise<GenerateExamR
 
   // Every question belongs to this topic, so grading can promote it directly.
   const questions: NewQuestionInput[] = res.data.questions
-    .filter((q) => q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length)
+    .filter(
+      (q) => q.options.length >= 2 && q.correctIndex >= 0 && q.correctIndex < q.options.length,
+    )
     .map((q) => ({
       topicId,
       topicTitle: material.topicTitle,
@@ -116,12 +124,13 @@ export async function generateQuizAction(topicId: string): Promise<GenerateExamR
     }));
 
   if (questions.length === 0) {
-    return { ok: false, error: "A IA não retornou questões válidas. Tente novamente." };
+    return {
+      ok: false,
+      error: "A IA não retornou questões válidas. Tente novamente.",
+    };
   }
 
-  const exam = await scoped((ownerId) =>
-    createExam(ownerId, material.goalId, questions, topicId),
-  );
+  const exam = await scoped((ownerId) => createExam(ownerId, material.goalId, questions, topicId));
   revalidatePath(`/goals/${material.goalId}`);
   return { ok: true, examId: exam.id, mocked: res.mocked };
 }

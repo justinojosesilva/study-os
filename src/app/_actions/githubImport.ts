@@ -1,16 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { scoped } from "@/domain/auth";
+import { scoped, getCurrentUserId } from "@/domain/auth";
 import { createProject } from "@/domain/resume/career";
 import { listPublicRepos, fetchReadmes, type GithubRepo } from "@/domain/github/repos";
 import { describeRepos, type GithubProjectDraft } from "@/domain/ai/githubProjects";
 
 /** Mesmo formato da fase 2: lê, mostra, e só grava depois de revisado. */
 
-export type ListReposResult =
-  | { ok: true; repos: GithubRepo[] }
-  | { ok: false; error: string };
+export type ListReposResult = { ok: true; repos: GithubRepo[] } | { ok: false; error: string };
 
 export async function listReposAction(username: string): Promise<ListReposResult> {
   const user = username.trim();
@@ -19,8 +17,7 @@ export async function listReposAction(username: string): Promise<ListReposResult
 }
 
 export type DescribeResult =
-  | { ok: true; projects: GithubProjectDraft[]; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; projects: GithubProjectDraft[]; mocked: boolean } | { ok: false; error: string };
 
 /** Limite de escolha: segura o custo do prompt e o número de requisições. */
 const MAX_SELECAO = 8;
@@ -32,18 +29,20 @@ export async function describeReposAction(
 ): Promise<DescribeResult> {
   if (names.length === 0) return { ok: false, error: "Escolha ao menos um repositório." };
   if (names.length > MAX_SELECAO) {
-    return { ok: false, error: `Escolha no máximo ${MAX_SELECAO} repositórios por vez.` };
+    return {
+      ok: false,
+      error: `Escolha no máximo ${MAX_SELECAO} repositórios por vez.`,
+    };
   }
+  const ownerId = await getCurrentUserId();
   const detalhes = await fetchReadmes(username, names, repos);
   if (detalhes.length === 0) {
     return { ok: false, error: "Não consegui ler os repositórios escolhidos." };
   }
-  return describeRepos(detalhes);
+  return describeRepos(ownerId, detalhes);
 }
 
-export type ConfirmResult =
-  | { ok: true; imported: number }
-  | { ok: false; error: string };
+export type ConfirmResult = { ok: true; imported: number } | { ok: false; error: string };
 
 export async function confirmGithubProjectsAction(
   drafts: GithubProjectDraft[],

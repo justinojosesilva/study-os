@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * Topic quiz — the shorter road to `mastered`.
@@ -24,8 +25,7 @@ export const QuizSchema = z.object({
 export type GeneratedQuiz = z.infer<typeof QuizSchema>;
 
 export type QuizResult =
-  | { ok: true; data: GeneratedQuiz; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: GeneratedQuiz; mocked: boolean } | { ok: false; error: string };
 
 export type QuizSource = {
   topicTitle: string;
@@ -70,10 +70,7 @@ function buildContext(src: QuizSource, count: number): string {
   const labs = src.lessons.filter((l) => l.kind === "lab");
   const aulas = src.lessons.filter((l) => l.kind === "aula");
 
-  const parts: string[] = [
-    `Tópico: ${src.topicTitle}`,
-    `Objetivo de estudo: ${src.goalTitle}`,
-  ];
+  const parts: string[] = [`Tópico: ${src.topicTitle}`, `Objetivo de estudo: ${src.goalTitle}`];
 
   if (src.flashcards.length) {
     parts.push(
@@ -118,10 +115,7 @@ function buildContext(src: QuizSource, count: number): string {
     parts.push("", `AULA — ${l.title}:`, squeeze(l.content, BUDGET.aula));
   }
 
-  parts.push(
-    "",
-    `Gere exatamente ${count} questões sobre este tópico, usando o material acima.`,
-  );
+  parts.push("", `Gere exatamente ${count} questões sobre este tópico, usando o material acima.`);
   return parts.join("\n");
 }
 
@@ -156,6 +150,7 @@ vira decoreba errada, que é o oposto do objetivo. "correctIndex" é o índice (
 1-2 frases por que a correta está certa. Responda SEMPRE em português do Brasil.`;
 
 export async function generateQuiz(
+  ownerId: string,
   src: QuizSource,
   questionCount: number,
 ): Promise<QuizResult> {
@@ -177,17 +172,18 @@ export async function generateQuiz(
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{ role: "user", content: buildContext(src, questionCount) }],
-      output_config: { format: zodOutputFormat(QuizSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "quizGen", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 8192,
+        system: SYSTEM,
+        messages: [{ role: "user", content: buildContext(src, questionCount) }],
+        output_config: { format: zodOutputFormat(QuizSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output || res.parsed_output.questions.length === 0) {
       return { ok: false, error: "A IA não retornou um questionário válido." };
@@ -195,7 +191,10 @@ export async function generateQuiz(
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("quiz-gen error", err);
-    return { ok: false, error: "Não foi possível gerar o questionário agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível gerar o questionário agora. Tente novamente.",
+    };
   }
 }
 

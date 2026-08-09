@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 import type { ResumeData } from "@/domain/resume/data";
 import type { CareerData } from "@/domain/resume/career";
 
@@ -21,8 +22,7 @@ export const ResumeContentSchema = z.object({
 export type ResumeContent = z.infer<typeof ResumeContentSchema>;
 
 export type ResumeContentResult =
-  | { ok: true; data: ResumeContent; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: ResumeContent; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um especialista em recrutamento tech e redação de currículos.
 
@@ -52,7 +52,20 @@ Português do Brasil, tom profissional e objetivo, sem clichês vazios.`;
 
 /** "2010-03" → "mar/2010"; entrada fora do padrão volta como veio. */
 function mesAno(ym: string): string {
-  const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const meses = [
+    "jan",
+    "fev",
+    "mar",
+    "abr",
+    "mai",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "out",
+    "nov",
+    "dez",
+  ];
   const [y, m] = ym.split("-");
   const i = Number(m) - 1;
   return meses[i] ? `${meses[i]}/${y}` : ym;
@@ -60,7 +73,10 @@ function mesAno(ym: string): string {
 
 /** Anos entre o cargo mais antigo e hoje — o número que define a senioridade. */
 function anosDeCarreira(career: CareerData): number | null {
-  const inicios = career.experiences.map((e) => e.startDate).filter(Boolean).sort();
+  const inicios = career.experiences
+    .map((e) => e.startDate)
+    .filter(Boolean)
+    .sort();
   if (inicios.length === 0) return null;
   const [y, m] = inicios[0].split("-").map(Number);
   const meses = (new Date().getFullYear() - y) * 12 + (new Date().getMonth() + 1 - m);
@@ -114,17 +130,28 @@ function serializeStudy(data: ResumeData): string {
   return linhas.join("\n");
 }
 
-export async function generateResumeContent(input: {
-  targetRole: string;
-  jobDescription?: string;
-  data: ResumeData;
-  career: CareerData;
-}): Promise<ResumeContentResult> {
+export async function generateResumeContent(
+  ownerId: string,
+  input: {
+    targetRole: string;
+    jobDescription?: string;
+    data: ResumeData;
+    career: CareerData;
+  },
+): Promise<ResumeContentResult> {
   const role = input.targetRole.trim();
-  if (!role) return { ok: false, error: "Informe o cargo-alvo para adaptar o currículo." };
+  if (!role)
+    return {
+      ok: false,
+      error: "Informe o cargo-alvo para adaptar o currículo.",
+    };
 
   if (isMockMode()) {
-    return { ok: true, data: mockContent(role, input.data, input.career), mocked: true };
+    return {
+      ok: true,
+      data: mockContent(role, input.data, input.career),
+      mocked: true,
+    };
   }
 
   const prompt = [
@@ -139,17 +166,18 @@ export async function generateResumeContent(input: {
     .join("\n\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 2048,
-      system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(ResumeContentSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "resume", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 2048,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: zodOutputFormat(ResumeContentSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou um currículo válido." };
@@ -157,7 +185,10 @@ export async function generateResumeContent(input: {
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("resume error", err);
-    return { ok: false, error: "Não foi possível gerar o currículo agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível gerar o currículo agora. Tente novamente.",
+    };
   }
 }
 

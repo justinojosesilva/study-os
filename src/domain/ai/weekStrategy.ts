@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * "Estratégia da semana" — an AI narrative layered on top of the DETERMINISTIC
@@ -25,8 +26,7 @@ export type WeekStrategyInput = {
 };
 
 export type WeekStrategyResult =
-  | { ok: true; data: WeekStrategy; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: WeekStrategy; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um coach de estudos. Recebe um plano de estudos JÁ MONTADO para a
 semana (não re-planeje nem invente tarefas). Escreva: (1) summary — 1 a 2 frases explicando a
@@ -56,6 +56,7 @@ function serialize(input: WeekStrategyInput): string {
 }
 
 export async function generateWeekStrategy(
+  ownerId: string,
   input: WeekStrategyInput,
 ): Promise<WeekStrategyResult> {
   if (isMockMode()) {
@@ -65,17 +66,18 @@ export async function generateWeekStrategy(
   const prompt = [serialize(input), "Escreva a estratégia da semana."].join("\n\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 1536,
-      system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(WeekStrategySchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "weekStrategy", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 1536,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: zodOutputFormat(WeekStrategySchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou uma estratégia válida." };
@@ -83,7 +85,10 @@ export async function generateWeekStrategy(
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("week strategy error", err);
-    return { ok: false, error: "Não foi possível gerar a estratégia agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível gerar a estratégia agora. Tente novamente.",
+    };
   }
 }
 

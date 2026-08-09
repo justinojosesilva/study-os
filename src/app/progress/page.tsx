@@ -22,6 +22,8 @@ import {
   calibration,
 } from "@/domain/performance";
 import { PerformancePanel } from "@/app/_components/PerformancePanel";
+import { AiUsagePanel } from "@/app/_components/AiUsagePanel";
+import { consumoDetalhadoNoEscopo } from "@/domain/ai/usage";
 import Link from "next/link";
 import { Breadcrumbs } from "@/app/_components/Breadcrumbs";
 
@@ -51,12 +53,13 @@ export default async function ProgressPage({
   const showGame = aba === "xp";
 
   return scoped(async (ownerId) => {
-  const [g, goals, phases, retention, calibrations] = await Promise.all([
+  const [g, goals, phases, retention, calibrations, usoIa] = await Promise.all([
     getGamification(ownerId),
     showGame ? Promise.resolve([]) : goalPerformance(ownerId),
     showGame ? Promise.resolve([]) : phasePerformance(ownerId),
     showGame ? Promise.resolve([]) : retentionTrend(ownerId),
     showGame ? Promise.resolve([]) : calibration(ownerId),
+    showGame ? Promise.resolve(null) : consumoDetalhadoNoEscopo(ownerId),
   ]);
 
   return (
@@ -82,12 +85,15 @@ export default async function ProgressPage({
       </nav>
 
       {!showGame && (
-        <PerformancePanel
-          goals={goals}
-          phases={phases}
-          retention={retention}
-          calibrations={calibrations}
-        />
+        <>
+          <PerformancePanel
+            goals={goals}
+            phases={phases}
+            retention={retention}
+            calibrations={calibrations}
+          />
+          {usoIa && <AiUsagePanel consumo={usoIa} />}
+        </>
       )}
 
       {showGame && (

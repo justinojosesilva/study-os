@@ -581,6 +581,44 @@ export const resumeProfiles = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// ai_usage — o que cada chamada de IA consumiu.
+//
+// Existe por dois motivos que são o mesmo trabalho: VISIBILIDADE (não havia
+// como saber o gasto sem abrir o console da Anthropic) e TETO (11 endpoints de
+// IA estavam acessíveis sem limite nenhum, faturados na conta do dono).
+//
+// Guarda TOKENS, não só custo: preço muda, token não. `cost_micros` é o que
+// foi cobrado na época, em milionésimos de dólar — inteiro, sem deriva de
+// ponto flutuante, e mantido como registro histórico mesmo se a tabela de
+// preços mudar depois.
+//
+// É log imutável, como `study_sessions`: uma linha por chamada, escrita uma
+// vez. Gasto por período é sempre agregado na leitura.
+// ---------------------------------------------------------------------------
+
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Qual módulo de `domain/ai` fez a chamada: "tutor", "quizGen"… */
+    endpoint: text("endpoint").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    /** Custo em milionésimos de dólar. US$ 0,22 = 220000. */
+    costMicros: integer("cost_micros").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // A consulta quente é "quanto este dono gastou desde X" — daí o par.
+    index("ai_usage_owner_created_idx").on(t.ownerId, t.createdAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // resume_experiences / resume_projects — a CARREIRA, que é anterior ao app.
 //
 // Todo o resto do currículo é DERIVADO do uso do Study OS: competência é
@@ -671,6 +709,8 @@ export type ResumeProfile = typeof resumeProfiles.$inferSelect;
 export type NewResumeProfile = typeof resumeProfiles.$inferInsert;
 export type ResumeExperience = typeof resumeExperiences.$inferSelect;
 export type NewResumeExperience = typeof resumeExperiences.$inferInsert;
+export type AiUsage = typeof aiUsage.$inferSelect;
+export type NewAiUsage = typeof aiUsage.$inferInsert;
 export type ResumeProject = typeof resumeProjects.$inferSelect;
 export type NewResumeProject = typeof resumeProjects.$inferInsert;
 

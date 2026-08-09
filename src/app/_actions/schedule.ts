@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { scoped } from "@/domain/auth";
+import { scoped, getCurrentUserId } from "@/domain/auth";
+import { runAsOwner } from "@/infra/db/client";
 import { setAvailability } from "@/domain/user/repository";
 import { getWeekPlan } from "@/domain/schedule/planner";
 import { getUpcomingExam } from "@/domain/certifications/repository";
@@ -30,7 +31,8 @@ export async function setAvailabilityAction(minutes: number[]): Promise<ActionRe
 /** Narrate the already-computed week plan. Context is read under RLS in a short
  *  transaction; the model call happens outside it. */
 export async function generateWeekStrategyAction(): Promise<WeekStrategyResult> {
-  const input = await scoped(async (ownerId): Promise<WeekStrategyInput> => {
+  const ownerId = await getCurrentUserId();
+  const input = await runAsOwner(ownerId, async (): Promise<WeekStrategyInput> => {
     const [plan, exam, dueReviews] = await Promise.all([
       getWeekPlan(ownerId),
       getUpcomingExam(ownerId),
@@ -42,7 +44,11 @@ export async function generateWeekStrategyAction(): Promise<WeekStrategyResult> 
     for (const day of plan.days) {
       for (const b of day.blocks) {
         if (b.kind !== "topic" || !b.topicId) continue;
-        const e = byTopic.get(b.topicId) ?? { title: b.label, goalTitle: b.goalTitle ?? "", blocks: 0 };
+        const e = byTopic.get(b.topicId) ?? {
+          title: b.label,
+          goalTitle: b.goalTitle ?? "",
+          blocks: 0,
+        };
         e.blocks += 1;
         byTopic.set(b.topicId, e);
       }
@@ -59,5 +65,5 @@ export async function generateWeekStrategyAction(): Promise<WeekStrategyResult> 
     };
   });
 
-  return generateWeekStrategy(input);
+  return generateWeekStrategy(ownerId, input);
 }

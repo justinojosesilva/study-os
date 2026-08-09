@@ -25,6 +25,7 @@ const TENANT_TABLES = [
   "exams",
   "exam_questions",
   "tutor_answers",
+  "ai_usage",
 ];
 
 // The restricted app role's password. In prod set APP_DB_PASSWORD; the app

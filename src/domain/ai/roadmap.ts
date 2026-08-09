@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 /**
  * Career-mentor roadmap generation. Given a free-text career target, Claude
@@ -25,8 +26,7 @@ export const RoadmapSchema = z.object({
 export type Roadmap = z.infer<typeof RoadmapSchema>;
 
 export type RoadmapResult =
-  | { ok: true; data: Roadmap; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: Roadmap; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um mentor de carreira em tecnologia. Dado um objetivo de carreira,
 gere um roadmap de aprendizado estruturado em fases (por exemplo: Fundamentos, Intermediário,
@@ -36,6 +36,7 @@ tempo total em meses. Responda SEMPRE em português do Brasil, específico e pr�
 Sugira um título de objetivo curto em goalTitle.`;
 
 export async function generateRoadmap(
+  ownerId: string,
   target: string,
   context?: string,
 ): Promise<RoadmapResult> {
@@ -55,17 +56,18 @@ export async function generateRoadmap(
     .join("\n");
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(RoadmapSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "roadmap", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [{ role: "user", content: prompt }],
+        output_config: { format: zodOutputFormat(RoadmapSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output) {
       return { ok: false, error: "A IA não retornou um roadmap válido." };
@@ -86,11 +88,30 @@ function mockRoadmap(target: string): Roadmap {
     summary: `Trilha para "${target}", das bases às certificações. Estude por fase e use revisão espaçada para reter o conteúdo.`,
     estimatedMonths: 6,
     phases: [
-      { name: "Fundamentos", focus: "Bases conceituais", topics: ["Conceitos essenciais", "Ferramentas básicas", "Primeiro projeto prático"] },
-      { name: "Intermediário", focus: "Aplicação prática", topics: ["Padrões comuns", "Boas práticas", "Projeto de portfólio"] },
-      { name: "Avançado", focus: "Profundidade e escala", topics: ["Tópicos avançados", "Performance e escala", "Casos do mundo real"] },
-      { name: "Certificações", focus: "Validação", topics: ["Simulados", "Revisão final"] },
+      {
+        name: "Fundamentos",
+        focus: "Bases conceituais",
+        topics: ["Conceitos essenciais", "Ferramentas básicas", "Primeiro projeto prático"],
+      },
+      {
+        name: "Intermediário",
+        focus: "Aplicação prática",
+        topics: ["Padrões comuns", "Boas práticas", "Projeto de portfólio"],
+      },
+      {
+        name: "Avançado",
+        focus: "Profundidade e escala",
+        topics: ["Tópicos avançados", "Performance e escala", "Casos do mundo real"],
+      },
+      {
+        name: "Certificações",
+        focus: "Validação",
+        topics: ["Simulados", "Revisão final"],
+      },
     ],
-    certifications: ["Certificação de nível associate da área", "Certificação profissional avançada"],
+    certifications: [
+      "Certificação de nível associate da área",
+      "Certificação profissional avançada",
+    ],
   };
 }

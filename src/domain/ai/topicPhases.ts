@@ -3,6 +3,7 @@ import type { getGoalWithTopics } from "@/domain/goals/repository";
 import { CATEGORY } from "@/lib/categories";
 import { statusLabelPt } from "@/lib/topic-status";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>;
 
@@ -27,8 +28,7 @@ export const PhasesSchema = z.object({
 export type ProposedPhases = z.infer<typeof PhasesSchema>;
 
 export type PhasesResult =
-  | { ok: true; data: ProposedPhases; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: ProposedPhases; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você organiza tópicos de estudo em fases de aprendizado, na ordem em que devem ser
 encarados. Use de 3 a 5 fases, com nomes curtos que indiquem profundidade crescente (por exemplo
@@ -39,9 +39,12 @@ aparece em UMA única fase; nenhum tópico pode ficar de fora; ordene as fases d
 mais avançada, e dentro de cada fase ordene por dependência (o que precisa vir antes vem antes).
 Responda SEMPRE em português do Brasil.`;
 
-export async function proposePhases(goal: GoalWithTopics): Promise<PhasesResult> {
+export async function proposePhases(ownerId: string, goal: GoalWithTopics): Promise<PhasesResult> {
   if (goal.topics.length < 2) {
-    return { ok: false, error: "Cadastre ao menos dois tópicos para agrupar em fases." };
+    return {
+      ok: false,
+      error: "Cadastre ao menos dois tópicos para agrupar em fases.",
+    };
   }
 
   if (isMockMode()) {
@@ -49,17 +52,18 @@ export async function proposePhases(goal: GoalWithTopics): Promise<PhasesResult>
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      messages: [{ role: "user", content: buildContext(goal) }],
-      output_config: { format: zodOutputFormat(PhasesSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "topicPhases", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        messages: [{ role: "user", content: buildContext(goal) }],
+        output_config: { format: zodOutputFormat(PhasesSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output || res.parsed_output.phases.length === 0) {
       return { ok: false, error: "A IA não retornou um agrupamento válido." };
@@ -67,7 +71,10 @@ export async function proposePhases(goal: GoalWithTopics): Promise<PhasesResult>
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("topic-phases error", err);
-    return { ok: false, error: "Não foi possível agrupar agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível agrupar agora. Tente novamente.",
+    };
   }
 }
 
@@ -95,7 +102,10 @@ function mockPhases(goal: GoalWithTopics): ProposedPhases {
   const names = ["Fundamentos", "Base", "Especialista"];
   return {
     phases: names
-      .map((name, i) => ({ name, topics: titles.slice(i * size, (i + 1) * size) }))
+      .map((name, i) => ({
+        name,
+        topics: titles.slice(i * size, (i + 1) * size),
+      }))
       .filter((p) => p.topics.length > 0),
   };
 }

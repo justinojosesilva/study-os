@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { scoped } from "@/domain/auth";
+import { scoped, getCurrentUserId } from "@/domain/auth";
 import { createExperience, createProject } from "@/domain/resume/career";
 import { createCertification } from "@/domain/certifications/repository";
 import { extractCareer, type CareerExtraction } from "@/domain/ai/careerImport";
@@ -13,8 +13,7 @@ import { extractCareer, type CareerExtraction } from "@/domain/ai/careerImport";
  */
 
 export type ImportResult =
-  | { ok: true; data: CareerExtraction; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: CareerExtraction; mocked: boolean } | { ok: false; error: string };
 
 /** O limite da API é 32 MB no request inteiro; 10 MB cobre folgado um CV. */
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -27,10 +26,16 @@ export async function importCareerAction(fd: FormData): Promise<ImportResult> {
 
   if (file instanceof File && file.size > 0) {
     if (file.type !== "application/pdf") {
-      return { ok: false, error: "Envie um PDF, ou cole o texto do currículo." };
+      return {
+        ok: false,
+        error: "Envie um PDF, ou cole o texto do currículo.",
+      };
     }
     if (file.size > MAX_PDF_BYTES) {
-      return { ok: false, error: "PDF acima de 10 MB. Cole o texto ou envie um arquivo menor." };
+      return {
+        ok: false,
+        error: "PDF acima de 10 MB. Cole o texto ou envie um arquivo menor.",
+      };
     }
     const buf = Buffer.from(await file.arrayBuffer());
     // base64 sem quebras de linha — a API rejeita o payload com elas.
@@ -38,12 +43,16 @@ export async function importCareerAction(fd: FormData): Promise<ImportResult> {
   }
 
   if (!pdfBase64 && !text) {
-    return { ok: false, error: "Envie o PDF do currículo ou cole o texto dele." };
+    return {
+      ok: false,
+      error: "Envie o PDF do currículo ou cole o texto dele.",
+    };
   }
 
   // Sem transação aberta: a chamada ao modelo leva segundos e não deve
   // segurar conexão do banco. Nada é lido do banco aqui.
-  return extractCareer({ pdfBase64, text: text || undefined });
+  const ownerId = await getCurrentUserId();
+  return extractCareer(ownerId, { pdfBase64, text: text || undefined });
 }
 
 export type ConfirmResult =
@@ -58,9 +67,7 @@ function mesParaData(ym: string | null): Date | null {
 }
 
 /** Grava o que a pessoa revisou. Só aqui existe escrita. */
-export async function confirmCareerImportAction(
-  data: CareerExtraction,
-): Promise<ConfirmResult> {
+export async function confirmCareerImportAction(data: CareerExtraction): Promise<ConfirmResult> {
   const experiences = data.experiences.filter((e) => e.company.trim() && e.role.trim());
   const projects = data.projects.filter((p) => p.title.trim());
   const certs = data.certifications.filter((c) => c.title.trim() && c.provider.trim());

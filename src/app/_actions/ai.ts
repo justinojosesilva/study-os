@@ -2,41 +2,36 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId, scoped } from "@/domain/auth";
+import { runAsOwner } from "@/infra/db/client";
 import { saveTutorAnswer } from "@/domain/tutor/repository";
 import { proposePhases } from "@/domain/ai/topicPhases";
 import { applyPhases } from "@/domain/topics/repository";
 import { analyzeGoalGaps, type AnalysisResult } from "@/domain/ai/gapAnalysis";
 import { generateRoadmap, type RoadmapResult } from "@/domain/ai/roadmap";
-import {
-  generateFlashcards,
-  type FlashcardGenResult,
-} from "@/domain/ai/flashcardGen";
+import { generateFlashcards, type FlashcardGenResult } from "@/domain/ai/flashcardGen";
 import { askTutor, type TutorMode, type TutorResult } from "@/domain/ai/tutor";
 import { createGoal, getGoalWithTopics } from "@/domain/goals/repository";
 import { createTopic } from "@/domain/topics/repository";
 import { getTopicContext } from "@/domain/flashcards/repository";
-import {
-  listNotesForTopicWithContent,
-  createNote,
-  deriveTitle,
-} from "@/domain/notes/repository";
+import { listNotesForTopicWithContent, createNote, deriveTitle } from "@/domain/notes/repository";
 
 // AI actions read tenant context inside a short RLS-scoped transaction, then
 // call the model OUTSIDE it — we never hold a DB transaction open across the
 // multi-second model round-trip.
 
 export async function analyzeGoalGapsAction(goalId: string): Promise<AnalysisResult> {
-  const goal = await scoped((ownerId) => getGoalWithTopics(ownerId, goalId));
+  const ownerId = await getCurrentUserId();
+  const goal = await runAsOwner(ownerId, () => getGoalWithTopics(ownerId, goalId));
   if (!goal) return { ok: false, error: "Objetivo não encontrado." };
-  return analyzeGoalGaps(goal);
+  return analyzeGoalGaps(ownerId, goal);
 }
 
 export async function generateRoadmapAction(
   target: string,
   context?: string,
 ): Promise<RoadmapResult> {
-  await getCurrentUserId(); // ensure authenticated; no tenant DB access
-  return generateRoadmap(target, context);
+  const ownerId = await getCurrentUserId(); // sem leitura de dados do tenant, mas a cota é por dono
+  return generateRoadmap(ownerId, target, context);
 }
 
 export async function generateFlashcardsAction(
@@ -46,9 +41,10 @@ export async function generateFlashcardsAction(
 ): Promise<FlashcardGenResult> {
   // `content` is whatever the caller wants turned into cards — pasted text, or
   // the body of one note. No need to gather the topic's other notes here.
-  const ctx = await scoped((ownerId) => getTopicContext(ownerId, topicId));
+  const ownerId = await getCurrentUserId();
+  const ctx = await runAsOwner(ownerId, () => getTopicContext(ownerId, topicId));
   if (!ctx) return { ok: false, error: "Tópico não encontrado." };
-  return generateFlashcards({
+  return generateFlashcards(ownerId, {
     topicTitle: ctx.topicTitle,
     goalTitle: ctx.goalTitle,
     content,
@@ -75,7 +71,8 @@ export async function askTutorAction(
   question?: string,
   context?: TutorContext,
 ): Promise<TutorResult> {
-  const ctx = await scoped(async (ownerId) => {
+  const ownerId = await getCurrentUserId();
+  const ctx = await runAsOwner(ownerId, async () => {
     const topic = await getTopicContext(ownerId, topicId);
     if (!topic) return null;
     // The tutor used to answer without ever seeing what the student had
@@ -96,11 +93,11 @@ export async function askTutorAction(
       ? `Sobre este trecho da aula:\n\n"${context.quote}"\n\n${asked}`
       : context?.quote
         ? `Sobre este trecho da aula:\n\n"${context.quote}"\n\nExplique este trecho.`
-        : asked ?? undefined;
+        : (asked ?? undefined);
 
   // Read context in a short scoped transaction, call the AI outside it, then
   // write back — the model call is slow and must not hold a DB transaction.
-  const res = await askTutor({
+  const res = await askTutor(ownerId, {
     topicTitle: ctx.topicTitle,
     goalTitle: ctx.goalTitle,
     mode,
@@ -114,8 +111,14 @@ export async function askTutorAction(
     // the tutor gets asked casually, and filing every passing question would
     // bury the syntheses that were written on purpose.
     try {
-      await scoped((ownerId) =>
-        saveTutorAnswer({ ownerId, topicId, mode, question: asked, answer: res.text }),
+      await runAsOwner(ownerId, () =>
+        saveTutorAnswer({
+          ownerId,
+          topicId,
+          mode,
+          question: asked,
+          answer: res.text,
+        }),
       );
     } catch (err) {
       console.error("tutor-save error", err);
@@ -125,9 +128,7 @@ export async function askTutorAction(
   return res;
 }
 
-export type SaveTutorNoteResult =
-  | { ok: true; id: string }
-  | { ok: false; error: string };
+export type SaveTutorNoteResult = { ok: true; id: string } | { ok: false; error: string };
 
 /**
  * Files a tutor answer as a note, on demand.
@@ -234,20 +235,18 @@ export async function adoptRoadmapAction(input: {
 }
 
 export type PhasesActionResult =
-  | { ok: true; grouped: number; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; grouped: number; mocked: boolean } | { ok: false; error: string };
 
 /** Groups a goal's existing topics into learning phases via the mentor. */
-export async function groupTopicsIntoPhasesAction(
-  goalId: string,
-): Promise<PhasesActionResult> {
-  const goal = await scoped((ownerId) => getGoalWithTopics(ownerId, goalId));
+export async function groupTopicsIntoPhasesAction(goalId: string): Promise<PhasesActionResult> {
+  const ownerId = await getCurrentUserId();
+  const goal = await runAsOwner(ownerId, () => getGoalWithTopics(ownerId, goalId));
   if (!goal) return { ok: false, error: "Objetivo não encontrado." };
 
-  const res = await proposePhases(goal);
+  const res = await proposePhases(ownerId, goal);
   if (!res.ok) return { ok: false, error: res.error };
 
-  const grouped = await scoped((ownerId) => applyPhases(ownerId, goalId, res.data.phases));
+  const grouped = await runAsOwner(ownerId, () => applyPhases(ownerId, goalId, res.data.phases));
   revalidatePath(`/goals/${goalId}`);
   return { ok: true, grouped, mocked: res.mocked };
 }

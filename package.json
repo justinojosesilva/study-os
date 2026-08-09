@@ -14,6 +14,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:rls": "tsx scripts/setup-rls.ts",
+    "db:rls-table": "tsx scripts/rls-table.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:backfill": "tsx scripts/backfill-sessions.ts",
     "db:backfill-reviews": "tsx scripts/backfill-reviews.ts",

@@ -3,6 +3,7 @@ import type { getGoalWithTopics } from "@/domain/goals/repository";
 import { CATEGORY } from "@/lib/categories";
 import { statusLabelPt } from "@/lib/topic-status";
 import { MODEL, isMockMode } from "./config";
+import { chamarModelo } from "./usage";
 
 type GoalWithTopics = NonNullable<Awaited<ReturnType<typeof getGoalWithTopics>>>;
 
@@ -31,8 +32,7 @@ export const ExamSchema = z.object({
 export type GeneratedExam = z.infer<typeof ExamSchema>;
 
 export type ExamGenResult =
-  | { ok: true; data: GeneratedExam; mocked: boolean }
-  | { ok: false; error: string };
+  { ok: true; data: GeneratedExam; mocked: boolean } | { ok: false; error: string };
 
 const SYSTEM = `Você é um examinador técnico sênior montando uma prova para avaliar o que o aluno
 REALMENTE absorveu de um objetivo de estudo. Gere questões de múltipla escolha (4 alternativas cada,
@@ -48,6 +48,7 @@ Evite perguntas de decoreba: prefira aplicação, comparação e diagnóstico de
 está certa, em 1-2 frases. Responda SEMPRE em português do Brasil.`;
 
 export async function generateExam(
+  ownerId: string,
   goal: GoalWithTopics,
   questionCount: number,
 ): Promise<ExamGenResult> {
@@ -64,17 +65,18 @@ export async function generateExam(
   }
 
   try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { zodOutputFormat } = await import("@anthropic-ai/sdk/helpers/zod");
-    const client = new Anthropic();
-
-    const res = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{ role: "user", content: buildContext(goal, topics, questionCount) }],
-      output_config: { format: zodOutputFormat(ExamSchema) },
-    });
+    const chamada = await chamarModelo(ownerId, "examGen", (client) =>
+      client.messages.parse({
+        model: MODEL,
+        max_tokens: 8192,
+        system: SYSTEM,
+        messages: [{ role: "user", content: buildContext(goal, topics, questionCount) }],
+        output_config: { format: zodOutputFormat(ExamSchema) },
+      }),
+    );
+    if (!chamada.ok) return { ok: false, error: chamada.error };
+    const res = chamada.res;
 
     if (!res.parsed_output || res.parsed_output.questions.length === 0) {
       return { ok: false, error: "A IA não retornou uma prova válida." };
@@ -82,7 +84,10 @@ export async function generateExam(
     return { ok: true, data: res.parsed_output, mocked: false };
   } catch (err) {
     console.error("exam-gen error", err);
-    return { ok: false, error: "Não foi possível gerar a prova agora. Tente novamente." };
+    return {
+      ok: false,
+      error: "Não foi possível gerar a prova agora. Tente novamente.",
+    };
   }
 }
 
@@ -106,7 +111,6 @@ function buildContext(
     .filter(Boolean)
     .join("\n");
 }
-
 
 // ---------------------------------------------------------------------------
 // Mock — round-robins the goal's own topics so the flow is usable without a key.
