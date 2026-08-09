@@ -16,5 +16,21 @@
     "owner": "Justino",
     "reviewBy": "2026-08-22",
     "status": "ativa"
+  },
+  {
+    "id": "DEC-002",
+    "date": "2026-08-09",
+    "decision": "Aceitar o Companion (extensão de navegador com cronômetro, captura de anotação e ações sobre trecho selecionado) como direção provável do produto — mas construir só DEPOIS de cota de IA e de uma API autenticada por token existirem.",
+    "reason": "A ideia é do dono; o documento de apoio a inflou para 16 seções, das quais 3 já existem (busca full-text, quizGen, tutor) e 3 são o Knowledge Graph já recusado. Sobram ~5, e o núcleo são dois: sessão amarrada à URL e anotação com contexto da página. A evidência que sustenta: quando o cronômetro passou a ficar NA página da aula (26/jul), o volume de estudo não mudou (100 -> 94 min/dia) mas anotações vinculadas à aula foram de 0 para 8 — capturar onde o conteúdo está muda O QUE se captura. Ressalva: `lesson_id` nasceu na mesma mudança, então o zero anterior é em parte artefato. O escopo amplo (blog, videoaula, documentação) é mais forte que só faculdade, e é coerente com a decisão de materiais serem referência externa e não arquivo hospedado.",
+    "opportunityRef": "OPP-003",
+    "runRef": "runs/2026-08-08T17-06",
+    "evidenceRefs": [
+      "EV-016",
+      "EV-017"
+    ],
+    "alternative": "Construir a extensão agora (rejeitado: não existe API — tudo é Server Action, inalcançável de fora — e o cookie do Auth.js não atravessa origem, então falta um caminho de token; além disso IA por seleção de texto sem cota é o pior cenário de gasto). Modelar faculdade só dentro do app (mantido como teste barato para descobrir QUAIS funcionalidades importam, não mais para decidir se vale).",
+    "owner": "Justino",
+    "reviewBy": "2026-09-09",
+    "status": "aguardando-dados"
   }
 ]
