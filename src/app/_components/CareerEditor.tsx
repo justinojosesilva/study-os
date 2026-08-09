@@ -20,7 +20,7 @@ import { GithubImportDialog } from "./GithubImportDialog";
 /**
  * A carreira anterior ao app, digitada à mão.
  *
- * Todo o resto do currículo é derivado do uso do Study OS — e por isso ele só
+ * Todo o resto do currículo é derivado do uso do Latis Skills — e por isso ele só
  * sabia descrever quem começou a carreira aqui dentro. Isto é a entrada dos
  * fatos que o app não tem como computar.
  */
@@ -46,7 +46,7 @@ export function CareerEditor({
         <p className="text-xs text-muted">
           {vazio
             ? "Um currículo real tem páginas. Importe o que você já tem em vez de digitar."
-            : "A carreira anterior ao Study OS."}
+            : "A carreira anterior ao Latis Skills."}
         </p>
         <CareerImportDialog />
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { Logo } from "./Logo";
 import {
   Home,
   CalendarDays,
@@ -127,13 +128,13 @@ export function AppShell({
         <div className={`mb-8 flex items-center ${collapsed ? "flex-col gap-3" : "justify-between"}`}>
           <Link
             href="/"
-            aria-label="Study OS · início"
+            aria-label="Latis Skills · início"
             className={`tip flex items-center gap-2.5 ${collapsed ? "" : "px-2"}`}
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink text-canvas">
-              <Target size={18} />
+              <Logo size={19} />
             </span>
-            {!collapsed && <span className="text-lg font-medium">Study OS</span>}
+            {!collapsed && <span className="text-lg font-medium">Latis Skills</span>}
           </Link>
           <button
             type="button"
@@ -189,11 +190,11 @@ export function AppShell({
       {/* Mobile: título em cima, navegação embaixo — o polegar alcança a
           barra inferior, e o topo fica para identidade e conta. */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-surface/85 px-4 py-2.5 backdrop-blur lg:hidden">
-        <Link href="/" aria-label="Study OS · início" className="flex shrink-0 items-center gap-2">
+        <Link href="/" aria-label="Latis Skills · início" className="flex shrink-0 items-center gap-2">
           <span className="flex size-7 items-center justify-center rounded-lg bg-ink text-canvas">
-            <Target size={15} />
+            <Logo size={17} />
           </span>
-          <span className="text-sm font-medium">Study OS</span>
+          <span className="text-sm font-medium">Latis Skills</span>
         </Link>
         <span className="flex size-11 items-center justify-center">{signOut}</span>
       </header>

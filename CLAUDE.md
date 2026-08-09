@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Study OS
+# Latis Skills
 
 Personal study-management platform. Built personal-first (single user, dogfooding),
 modeled multi-tenant-aware so it can become a SaaS later without a rewrite.

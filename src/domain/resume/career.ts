@@ -8,7 +8,7 @@ import {
 import { and, asc, desc, eq } from "drizzle-orm";
 
 /**
- * A carreira anterior ao Study OS — a única parte do currículo que é FATO
+ * A carreira anterior ao Latis Skills — a única parte do currículo que é FATO
  * armazenado em vez de derivado do uso do app. Ver o comentário das tabelas em
  * `infra/db/schema.ts`.
  */

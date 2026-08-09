@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { Target } from "lucide-react";
 import { auth, signIn } from "@/auth";
+import { Logo } from "@/app/_components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +19,9 @@ export default async function SignInPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col items-center justify-center px-6 text-center">
       <span className="mb-5 flex size-12 items-center justify-center rounded-xl bg-ink text-canvas">
-        <Target size={24} />
+        <Logo size={26} />
       </span>
-      <h1 className="text-2xl font-medium">Study OS</h1>
+      <h1 className="text-2xl font-medium">Latis Skills</h1>
       <p className="mt-2 text-sm text-muted">
         Transforme objetivos de carreira em planos de estudo executáveis.
       </p>

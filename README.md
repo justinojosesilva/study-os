@@ -1,4 +1,4 @@
-# Study OS
+# Latis Skills
 
 Plataforma de gestão de estudos técnicos. Objetivos viram tópicos, tópicos viram
 sessões de estudo, e o que se acumula alimenta revisão espaçada, provas geradas

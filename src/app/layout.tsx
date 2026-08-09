@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Study OS",
+  title: "Latis Skills",
   description: "Transforme objetivos de carreira em planos de estudo executáveis.",
 };
 

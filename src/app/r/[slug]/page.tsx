@@ -53,7 +53,7 @@ export default async function PublicResumePage({
           showStats={false}
         />
         <p className="mt-4 text-center text-xs text-faint">
-          Feito com <span className="font-medium text-muted">Study OS</span>
+          Feito com <span className="font-medium text-muted">Latis Skills</span>
         </p>
       </div>
     </main>

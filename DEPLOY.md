@@ -1,6 +1,6 @@
 # Deploy — Neon + Vercel
 
-O Study OS sobe como um app Next.js na **Vercel** com **Neon** (Postgres
+O Latis Skills sobe como um app Next.js na **Vercel** com **Neon** (Postgres
 serverless). O mesmo Postgres roda do dev à produção, então não há migração de
 banco quando você escala — você só troca as connection strings.
 

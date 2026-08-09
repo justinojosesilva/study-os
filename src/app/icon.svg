@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Latis Skills</title>
+  <!--
+    O favicon não pode usar currentColor: fora do documento não há cor herdada,
+    e ele cairia em preto — invisível numa aba de tema escuro. Daí o quadrado
+    de fundo, que garante contraste contra QUALQUER cor de aba, e a inversão
+    por prefers-color-scheme, para o quadrado nunca sumir dentro da barra.
+    As cores são as mesmas de --ink e --canvas do globals.css.
+  -->
+  <style>
+    .fundo { fill: #1c1917; }
+    .marca { stroke: #fafaf9; }
+    .marca-cheia { fill: #fafaf9; }
+    @media (prefers-color-scheme: dark) {
+      .fundo { fill: #fafaf9; }
+      .marca { stroke: #1c1917; }
+      .marca-cheia { fill: #1c1917; }
+    }
+  </style>
+  <rect class="fundo" width="48" height="48" rx="11" />
+  <!--
+    A marca compacta, reduzida a 72% e recentrada para respirar dentro do
+    quadrado. A geometria é a de nó grande com traço fino: é a única que mantém
+    o furo dos nós vazados aberto quando a aba renderiza isto a 16px. Ver o
+    comentário em _components/Logo.tsx — as duas precisam mudar juntas.
+  -->
+  <g transform="translate(6.72 6.72) scale(0.72)">
+    <g class="marca" stroke-width="3.2" stroke-linecap="round" fill="none" opacity="0.65">
+      <path d="M19.6 19 L16.2 24.8" />
+      <path d="M28.4 19 L31.8 24.8" />
+      <path d="M19.4 33 L28.6 33" />
+    </g>
+    <circle class="marca-cheia" cx="24" cy="11" r="6.4" />
+    <circle class="marca" cx="10.5" cy="33" r="5.8" fill="none" stroke-width="2.8" />
+    <circle class="marca" cx="37.5" cy="33" r="5.8" fill="none" stroke-width="2.8" />
+  </g>
+</svg>

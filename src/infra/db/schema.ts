@@ -621,7 +621,7 @@ export const aiUsage = pgTable(
 // ---------------------------------------------------------------------------
 // resume_experiences / resume_projects — a CARREIRA, que é anterior ao app.
 //
-// Todo o resto do currículo é DERIVADO do uso do Study OS: competência é
+// Todo o resto do currículo é DERIVADO do uso do Latis Skills: competência é
 // tópico `mastered`, credencial é certificação `passed`, dedicação é soma de
 // sessão. Isso descreve bem quem começou a carreira aqui dentro — e descreve
 // mal qualquer pessoa que já tinha uma. Medido em 06/08/2026: 4 tópicos
