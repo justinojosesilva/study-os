@@ -6,6 +6,7 @@ import {
   createTopic,
   setTopicStatus,
   setTopicPhase,
+  reorderTopics,
   deleteTopic,
 } from "@/domain/topics/repository";
 
@@ -77,6 +78,44 @@ export async function setTopicPhaseAction(
   return scoped(async (ownerId) => {
     const goalId = await setTopicPhase(ownerId, topicId, clean);
     if (!goalId) return { ok: false, error: "Tópico não encontrado." };
+    revalidateGoal(goalId);
+    return { ok: true };
+  });
+}
+
+/**
+ * Grava a ordem manual do objetivo. Recebe a lista COMPLETA já ordenada —
+ * ver o motivo em `reorderTopics`.
+ *
+ * O limite de 400 itens não é sobre o banco: é para uma requisição forjada não
+ * conseguir pedir uma transação arbitrariamente longa. O maior objetivo real
+ * tem 42 tópicos.
+ */
+export async function reorderTopicsAction(
+  goalId: string,
+  ordem: { id: string; phase: string | null }[],
+): Promise<ActionResult> {
+  if (!Array.isArray(ordem) || ordem.length === 0) {
+    return { ok: false, error: "Nada para reordenar." };
+  }
+  if (ordem.length > 400) {
+    return { ok: false, error: "Lista longa demais para reordenar de uma vez." };
+  }
+  if (ordem.some((o) => typeof o?.id !== "string")) {
+    return { ok: false, error: "Ordem inválida." };
+  }
+
+  return scoped(async (ownerId) => {
+    const ok = await reorderTopics(ownerId, goalId, ordem);
+    // `false` aqui quer dizer que a lista não bate com o objetivo — outra aba
+    // criou ou apagou um tópico enquanto esta arrastava. Recarregar resolve, e
+    // é honesto dizer isso em vez de "erro ao salvar".
+    if (!ok) {
+      return {
+        ok: false,
+        error: "A lista mudou enquanto você reordenava. Recarregue a página e tente de novo.",
+      };
+    }
     revalidateGoal(goalId);
     return { ok: true };
   });

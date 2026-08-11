@@ -102,6 +102,53 @@ export async function applyPhases(
 }
 
 /**
+ * Grava a ordem manual de um objetivo inteiro.
+ *
+ * O cliente manda a lista COMPLETA já na ordem desejada, com a fase de cada
+ * item — e não "moveu o item X da posição 3 para a 7". Índices de origem e
+ * destino obrigam servidor e cliente a concordarem sobre o estado anterior, e
+ * eles divergem no instante em que duas abas mexem no mesmo objetivo. Com a
+ * lista inteira, a última gravação simplesmente vence, que é o comportamento
+ * que uma reordenação manual deveria ter.
+ *
+ * Os ids são conferidos contra o objetivo antes de qualquer escrita: um id de
+ * outro dono ou de outro objetivo faz a operação inteira falhar, em vez de
+ * gravar metade.
+ *
+ * Devolve `false` quando a lista não corresponde ao objetivo.
+ */
+export async function reorderTopics(
+  ownerId: string,
+  goalId: string,
+  ordem: { id: string; phase: string | null }[],
+): Promise<boolean> {
+  if (ordem.length === 0) return false;
+
+  return db.transaction(async (tx) => {
+    const atuais = await tx
+      .select({ id: topics.id })
+      .from(topics)
+      .where(and(eq(topics.ownerId, ownerId), eq(topics.goalId, goalId)));
+
+    // Tem de ser a MESMA lista, não um subconjunto: reordenar sem mencionar um
+    // tópico deixaria ele com sortOrder velho no meio da sequência nova.
+    const noBanco = new Set(atuais.map((t) => t.id));
+    const enviados = new Set(ordem.map((o) => o.id));
+    if (noBanco.size !== enviados.size) return false;
+    for (const id of enviados) if (!noBanco.has(id)) return false;
+
+    let sort = 0;
+    for (const item of ordem) {
+      await tx
+        .update(topics)
+        .set({ phase: item.phase?.trim() || null, sortOrder: sort++ })
+        .where(and(eq(topics.ownerId, ownerId), eq(topics.id, item.id)));
+    }
+    return true;
+  });
+}
+
+/**
  * Moves a topic to another phase (or out of any phase, with null).
  *
  * Also renumbers the goal's `sortOrder`, which is load-bearing: the phase

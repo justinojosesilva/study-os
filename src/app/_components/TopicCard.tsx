@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Lock, GraduationCap } from "lucide-react";
+import { Trash2, Lock, GraduationCap, GripVertical } from "lucide-react";
 import {
   setTopicStatusAction,
   setTopicPhaseAction,
@@ -29,6 +29,9 @@ export function TopicCard({
   lessons,
   notes,
   phases = [],
+  dragRef,
+  handleRef,
+  dragging = false,
 }: {
   topic: TopicLite;
   goalId: string;
@@ -37,6 +40,11 @@ export function TopicCard({
   notes: NoteListItem[];
   /** Phases already in use on this goal, offered as options. */
   phases?: string[];
+  /** Refs da reordenação. Ausentes, o cartão renderiza como sempre — ele
+   *  continua utilizável fora de uma lista arrastável. */
+  dragRef?: (el: HTMLLIElement | null) => void;
+  handleRef?: (el: HTMLButtonElement | null) => void;
+  dragging?: boolean;
 }) {
   const router = useRouter();
   const openTool = useTopicTools();
@@ -104,11 +112,25 @@ export function TopicCard({
 
   return (
     <li
+      ref={dragRef}
       className={`flex flex-col gap-3 rounded-xl border bg-surface px-4 py-3 transition-colors ${
         topic.status === "mastered" ? "border-emerald-500/30" : "border-line"
-      } ${pending ? "opacity-60" : ""}`}
+      } ${pending ? "opacity-60" : ""} ${dragging ? "opacity-40" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
+        {/* A alça só existe quando a lista é reordenável. Arrastar pelo cartão
+            inteiro brigaria com os botões de status, tutor e flashcards que
+            vivem dentro dele. */}
+        {handleRef && (
+          <button
+            type="button"
+            ref={handleRef}
+            aria-label={`Reordenar ${topic.title}`}
+            className="tip -ml-1 mt-0.5 shrink-0 cursor-grab touch-none p-0.5 text-faint transition-colors hover:text-ink active:cursor-grabbing"
+          >
+            <GripVertical size={15} />
+          </button>
+        )}
         <p className="min-w-0 flex-1 text-sm font-medium">{topic.title}</p>
         <span
           className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${style.soft} ${style.text}`}
