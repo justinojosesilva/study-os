@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ClipboardList, Plus, Trash2, ExternalLink, Link2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2, ExternalLink, Link2, ChevronRight } from "lucide-react";
 import {
   createAssignmentAction,
   toggleDeliveredAction,
@@ -20,6 +20,25 @@ import type { AssignmentView } from "@/domain/assignments/repository";
  */
 
 type TopicOption = { id: string; title: string };
+
+/**
+ * Tira o respiro sobrando do texto colado, só na EXIBIÇÃO.
+ *
+ * O enunciado vem de HTML convertido em texto pela plataforma da faculdade, e
+ * chega com espaços presos no fim das linhas e sequências de três a cinco
+ * quebras entre parágrafos. Com `whitespace-pre-line` isso vira metade da
+ * caixa em branco: cabiam cinco linhas úteis em 256px.
+ *
+ * O que está no banco continua exatamente como você colou — normalizar na
+ * gravação apagaria a formatação de quem colou algo bem formatado de
+ * propósito.
+ */
+function enxugar(texto: string): string {
+  return texto
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 function diasAte(d: Date): number {
   const hoje = new Date();
@@ -230,7 +249,35 @@ function Linha({ atividade: a }: { atividade: AssignmentView }) {
               </a>
             )}
           </p>
-          {a.description && <p className="mt-1 text-xs text-muted">{a.description}</p>}
+          {a.description && (
+            /*
+             * O enunciado vem COLADO da plataforma da faculdade — 1,2 mil a 4,4
+             * mil caracteres, com o mesmo bloco de "Atenção! Atividade
+             * Avaliativa…" repetido em todas. Renderizado inline, como estava,
+             * três entregas somavam 1148px e enterravam os tópicos, que são o
+             * assunto da página.
+             *
+             * `<details>` nativo em vez de estado em React: abre e fecha por
+             * teclado sozinho, e não custa hidratação.
+             *
+             * `whitespace-pre-line` porque o texto colado tem quebras de linha
+             * que davam a estrutura dele — num `<p>` comum elas somem e o
+             * enunciado vira um bloco único ilegível.
+             *
+             * A altura é limitada com rolagem própria: abrir um enunciado de
+             * 4,4 mil caracteres não pode empurrar o resto da página para fora
+             * da tela de novo.
+             */
+            <details className="group mt-1.5">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint hover:text-ink">
+                <ChevronRight size={12} className="transition-transform group-open:rotate-90" />
+                Enunciado
+              </summary>
+              <div className="mt-1.5 max-h-64 overflow-y-auto whitespace-pre-line rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted">
+                {enxugar(a.description)}
+              </div>
+            </details>
+          )}
 
           {editandoLink && (
             <form action={salvarLink} className="mt-2 flex flex-wrap items-center gap-1.5">
