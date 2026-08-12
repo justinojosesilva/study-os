@@ -145,12 +145,52 @@ export function TopicGroups({
     persistir(novos);
   }
 
+  /**
+   * Reordena as FASES entre si, não os tópicos dentro delas.
+   *
+   * A ordem das fases nasce da ordem de criação do primeiro tópico de cada
+   * uma — tópico novo entra com `max(sortOrder)+1`, então uma fase nova sempre
+   * vai para o fim, mesmo sendo cronologicamente anterior. Quem cadastra a
+   * "Fase 5" e depois volta para cadastrar a "Fase 4" fica com a 4 embaixo, e
+   * o arrasto não resolve: ele move tópicos entre fases, nunca uma fase
+   * inteira.
+   *
+   * A chave "sem fase" fica sempre por último. Ela é área de espera, não
+   * etapa — ordená-la junto com as outras a jogaria para o meio da trilha.
+   */
+  function ordenarFasesPorNumero() {
+    const nomeadas = Object.keys(grupos)
+      .filter((k) => k !== SEM_FASE)
+      .sort(compararNatural);
+    const sequencia = SEM_FASE in grupos ? [...nomeadas, SEM_FASE] : nomeadas;
+
+    const novos: Record<string, string[]> = {};
+    for (const k of sequencia) novos[k] = grupos[k];
+    setGrupos(novos);
+    atualRef.current = novos;
+    persistir(novos);
+  }
+
+  // Mesma regra do botão por aula: sem ao menos duas fases numeradas não há o
+  // que ordenar, e botão que não muda nada é pior que botão nenhum.
+  const podeOrdenarFases = phaseNames.length >= 2 && temNumeracao(phaseNames);
+
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-medium">Tópicos</h2>
         <div className="flex items-center gap-2">
           {salvando && <span className="text-xs text-faint">salvando ordem…</span>}
+          {podeOrdenarFases && (
+            <button
+              type="button"
+              onClick={ordenarFasesPorNumero}
+              className="press inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
+            >
+              <ArrowDownNarrowWide size={14} />
+              Ordenar fases
+            </button>
+          )}
           {topics.length >= 2 && (
             <button
               type="button"
