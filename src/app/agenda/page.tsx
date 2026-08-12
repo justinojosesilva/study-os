@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CalendarDays, RefreshCw, Check } from "lucide-react";
 import { scoped } from "@/domain/auth";
 import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
+import { listUpcoming } from "@/domain/assignments/repository";
+import { UpcomingAssignments } from "@/app/_components/UpcomingAssignments";
 import { getAvailability } from "@/domain/user/repository";
 import { listTopicsForPicker } from "@/domain/topics/repository";
 import { listMaterialsForPicker } from "@/domain/materials/repository";
@@ -43,13 +45,14 @@ export default async function AgendaPage() {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
-    const [plan, availability, topics, materials, monthSessions] =
+    const [plan, availability, topics, materials, monthSessions, entregas] =
       await Promise.all([
         getWeekPlan(ownerId),
         getAvailability(ownerId),
         listTopicsForPicker(ownerId),
         listMaterialsForPicker(ownerId),
         listSessionsBetween(ownerId, monthStart, monthEnd),
+        listUpcoming(ownerId),
       ]);
 
     // Notes now live in their own table; the session only points at the moment
@@ -122,6 +125,8 @@ export default async function AgendaPage() {
           </div>
           <AvailabilitySettings availability={availability} />
         </div>
+
+        <UpcomingAssignments items={entregas} />
 
         {!plan.hasCandidates && !hasAnyBlocks && !hasPast ? (
           <EmptyState

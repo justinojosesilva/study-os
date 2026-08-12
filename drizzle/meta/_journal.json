@@ -169,6 +169,13 @@
       "when": 1786312011993,
       "tag": "0023_unknown_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786492385798,
+      "tag": "0024_sleepy_captain_britain",
+      "breakpoints": true
     }
   ]
 }

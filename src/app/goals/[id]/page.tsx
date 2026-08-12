@@ -21,6 +21,8 @@ import {
 import { CATEGORY } from "@/lib/categories";
 import { formatMonthYear, daysUntil, toDateKey } from "@/lib/date";
 import { TopicGroups } from "@/app/_components/TopicGroups";
+import { AssignmentsPanel } from "@/app/_components/AssignmentsPanel";
+import { listByGoal } from "@/domain/assignments/repository";
 import { TopicToolsProvider } from "@/app/_components/TopicTools";
 import { AddTopicForm } from "@/app/_components/AddTopicForm";
 import { GoalActions } from "@/app/_components/GoalActions";
@@ -43,8 +45,10 @@ export default async function GoalDetailPage({
   const goal = await getGoalWithTopics(ownerId, id);
   if (!goal) notFound();
 
-  const [allCards, materials, pickerMaterials, usage, certs, allLessons, allNotes, examAttempts] =
-    await Promise.all([
+  const [
+    allCards, materials, pickerMaterials, usage, certs, allLessons, allNotes, examAttempts,
+    entregas,
+  ] = await Promise.all([
     listFlashcardsForGoal(ownerId, id),
     listMaterialsForGoal(ownerId, id),
     // Todos os materiais, não só os deste objetivo: uma aula pode sair de um
@@ -55,6 +59,7 @@ export default async function GoalDetailPage({
     listLessonsForGoal(ownerId, id),
     listNotesForGoal(ownerId, id),
     listExamsForGoal(ownerId, id),
+    listByGoal(ownerId, id),
   ]);
   const cardsByTopic = new Map<string, { id: string; front: string; back: string }[]>();
   for (const c of allCards) {
@@ -184,6 +189,12 @@ export default async function GoalDetailPage({
         )}
         <AddTopicForm goalId={goal.id} />
       </section>
+
+      <AssignmentsPanel
+        goalId={goal.id}
+        items={entregas}
+        topics={goal.topics.map((t) => ({ id: t.id, title: t.title }))}
+      />
 
       <GapAnalysis goalId={goal.id} />
 

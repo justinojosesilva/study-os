@@ -542,6 +542,56 @@ export const certifications = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// assignments — atividades de entrega (trabalho, prova prática, seminário).
+//
+// POR QUE NÃO CABE EM NADA QUE EXISTE. `materials` é o que se CONSOME (URL e
+// progresso, sem prazo e sem estado de concluído); `lessons` é conteúdo;
+// `certifications` tem data de prova mas outro ciclo de vida. Entrega é algo
+// que se PRODUZ, com prazo duro e estado binário — e esquecê-la custa nota.
+//
+// Três decisões que valem mais que as colunas:
+//
+// 1. NÃO existe coluna `status`. Pendente é `deliveredAt IS NULL`. Duas
+//    colunas permitiriam o estado impossível "entregue sem data de entrega",
+//    e derivar em vez de guardar é a mesma regra do progresso do objetivo.
+// 2. `dueDate` é NOT NULL. A função inteira é não perder prazo; sem data a
+//    linha não entra na agenda nem no dashboard, e vira uma anotação — que já
+//    tem lugar próprio no sistema.
+// 3. `artifactUrl` é REFERÊNCIA, não arquivo. Mesma razão de `materials`: o
+//    app não vira file host (custo de storage e LGPD).
+// ---------------------------------------------------------------------------
+
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Cascade e não set null: entrega sem disciplina não significa nada.
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    // Opcional, e `set null` — a entrega sobrevive ao tópico que a originou.
+    topicId: uuid("topic_id").references(() => topics.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+    /** Null = pendente. É daqui que o estado é derivado. */
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** Link do que foi entregue — repositório, doc, vídeo. */
+    artifactUrl: text("artifact_url"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("assignments_owner_idx").on(t.ownerId),
+    index("assignments_goal_idx").on(t.goalId),
+    // O que a agenda e o dashboard perguntam: o que vence, do mais próximo.
+    index("assignments_owner_due_idx").on(t.ownerId, t.dueDate),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // resume_profile — the editorial layer of the "currículo inteligente" (the
 // résumé capstone). One row per user. Skills, certifications and goals are
 // DERIVED live from the other tables; this stores only the human/AI-authored
@@ -716,3 +766,6 @@ export type NewResumeProject = typeof resumeProjects.$inferInsert;
 
 export type TutorAnswer = typeof tutorAnswers.$inferSelect;
 export type NewTutorAnswer = typeof tutorAnswers.$inferInsert;
+
+export type Assignment = typeof assignments.$inferSelect;
+export type NewAssignment = typeof assignments.$inferInsert;

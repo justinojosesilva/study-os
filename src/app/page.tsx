@@ -14,6 +14,8 @@ import { getWeekPlan, type PlanDay } from "@/domain/schedule/planner";
 import { continueReading } from "@/domain/reading/repository";
 import { CATEGORY } from "@/lib/categories";
 import { daysUntil, startOfWeek, addDays, toDateKey } from "@/lib/date";
+import { listUpcoming } from "@/domain/assignments/repository";
+import { UpcomingAssignments } from "@/app/_components/UpcomingAssignments";
 import { SessionLogger } from "./_components/SessionLogger";
 import { NewGoalForm } from "./_components/NewGoalForm";
 import { GoalCard } from "./_components/GoalCard";
@@ -38,7 +40,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   return scoped(async (ownerId) => {
   const heatmapStart = addDays(startOfWeek(), -25 * 7);
-  const [data, topics, materials, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan, reading] =
+  const [data, topics, materials, sessions, minutesByDay, user, archived, dueCount, gamification, upcomingExam, weekPlan, reading, entregas] =
     await Promise.all([
       getDashboardData(ownerId),
       listTopicsForPicker(ownerId),
@@ -52,6 +54,7 @@ export default async function DashboardPage() {
       getUpcomingExam(ownerId),
       getWeekPlan(ownerId),
       continueReading(ownerId),
+      listUpcoming(ownerId, 7),
     ]);
   const todayPlan = weekPlan.days[0];
 
@@ -108,6 +111,8 @@ export default async function DashboardPage() {
       </section>
 
       {upcomingExam && <UpcomingExamCard exam={upcomingExam} />}
+
+      <UpcomingAssignments items={entregas} />
 
       {todayPlan.blocks.length > 0 && <TodayPlanCard day={todayPlan} />}
 
