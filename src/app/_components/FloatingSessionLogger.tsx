@@ -29,7 +29,9 @@ export function FloatingSessionLogger({
   const [error, setError] = useState<string | null>(null);
   const [manualDuration, setManualDuration] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
-  const timer = useStudyTimer();
+  // Escopo por tópico: o widget vive na página da aula, e recarregar numa aula
+  // diferente não pode herdar o tempo de outra.
+  const timer = useStudyTimer(undefined, `topico:${topicId}`);
   const sound = useSoundPrefs();
 
   const audio = useAmbientPlayer({

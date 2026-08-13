@@ -36,7 +36,9 @@ export function SessionLogger({
   onDismiss?: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const timer = useStudyTimer(initialMinutes);
+  // Escopo único para o diálogo: aqui o tópico é escolhido no formulário, então
+  // o cronômetro não pertence a nenhum tópico até a hora de salvar.
+  const timer = useStudyTimer(initialMinutes, "dialogo");
   const openedOnce = useRef(false);
   const [manualDuration, setManualDuration] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
