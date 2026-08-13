@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Play, Pause, RotateCcw, X, Timer, Coffee, SkipForward } from "lucide-react";
 import { logStudySession } from "@/app/_actions/sessions";
 import { useStudyTimer, MODES, fmtClock } from "./useStudyTimer";
+import { useSessionDraft } from "./useSessionDraft";
 import { useAmbientPlayer } from "./useAmbientPlayer";
 import { useAmbientAudio, SYNTH_VOLUME_SCALE } from "./useAmbientAudio";
 import { SoundControl, useSoundPrefs } from "./SoundControl";
@@ -39,6 +40,7 @@ export function SessionLogger({
   // Escopo único para o diálogo: aqui o tópico é escolhido no formulário, então
   // o cronômetro não pertence a nenhum tópico até a hora de salvar.
   const timer = useStudyTimer(initialMinutes, "dialogo");
+  const rascunho = useSessionDraft("dialogo");
   const openedOnce = useRef(false);
   const [manualDuration, setManualDuration] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,8 +93,12 @@ export function SessionLogger({
     fd.set("durationMin", String(durationMin));
     startTransition(async () => {
       const res = await logStudySession(fd);
-      if (res.ok) close();
-      else setError(res.error);
+      if (!res.ok) return setError(res.error);
+      // O rascunho é descartado AQUI, e não em `close()`: aquele também é o
+      // botão X do cabeçalho, e fechar o diálogo para consultar alguma coisa
+      // não pode apagar a anotação que você acabou de escrever.
+      rascunho.descartar();
+      close();
     });
   }
 
@@ -297,6 +303,8 @@ export function SessionLogger({
               <textarea
                 name="notes"
                 rows={8}
+                value={rascunho.texto}
+                onChange={(e) => rascunho.setTexto(e.target.value)}
                 placeholder="O que você estudou? Markdown funciona — títulos, listas, tabelas e código."
                 className="min-h-32 w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-sm"
               />

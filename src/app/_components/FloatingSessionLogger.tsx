@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { logStudySession } from "@/app/_actions/sessions";
 import { useStudyTimer, MODES, fmtClock } from "./useStudyTimer";
+import { useSessionDraft } from "./useSessionDraft";
 import { useAmbientPlayer } from "./useAmbientPlayer";
 import { useAmbientAudio, SYNTH_VOLUME_SCALE } from "./useAmbientAudio";
 import { SoundControl, useSoundPrefs } from "./SoundControl";
@@ -32,6 +33,7 @@ export function FloatingSessionLogger({
   // Escopo por tópico: o widget vive na página da aula, e recarregar numa aula
   // diferente não pode herdar o tempo de outra.
   const timer = useStudyTimer(undefined, `topico:${topicId}`);
+  const rascunho = useSessionDraft(`topico:${topicId}`);
   const sound = useSoundPrefs();
 
   const audio = useAmbientPlayer({
@@ -63,6 +65,7 @@ export function FloatingSessionLogger({
       const res = await logStudySession(fd);
       if (!res.ok) return setError(res.error);
       timer.reset();
+      rascunho.descartar();
       setManualDuration(null);
       setSaved(true);
       setOpen(false);
@@ -176,6 +179,8 @@ export function FloatingSessionLogger({
           <textarea
             name="notes"
             rows={5}
+            value={rascunho.texto}
+            onChange={(e) => rascunho.setTexto(e.target.value)}
             placeholder="Anotações desta sessão… (markdown funciona)"
             className="mt-2 max-h-72 w-full resize-y rounded-lg border border-line bg-surface px-2 py-1.5 text-sm"
           />
