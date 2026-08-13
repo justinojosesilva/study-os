@@ -79,8 +79,24 @@ export function SessionLogger({
     dialogRef.current?.showModal();
   }, [autoOpen]);
 
-  function close() {
+  /**
+   * Fechar NÃO descarta nada — nem o tempo, nem a anotação.
+   *
+   * O X antes chamava `timer.reset()`, então fechar o diálogo para consultar
+   * uma referência apagava a sessão em andamento. Depois de todo o trabalho
+   * para que uma hora e meia não se perca num reload, perder o mesmo tempo por
+   * clicar no botão errado ficou desproporcional. Zerar continua possível, mas
+   * só pelo "Reiniciar", que é onde a pessoa está de fato pedindo isso.
+   */
+  function dispensar() {
+    setError(null);
+    dialogRef.current?.close();
+  }
+
+  /** Sessão gravada: aqui sim tudo é zerado, porque já virou linha no banco. */
+  function concluir() {
     timer.reset();
+    rascunho.descartar();
     setManualDuration(null);
     setError(null);
     dialogRef.current?.close();
@@ -94,11 +110,7 @@ export function SessionLogger({
     startTransition(async () => {
       const res = await logStudySession(fd);
       if (!res.ok) return setError(res.error);
-      // O rascunho é descartado AQUI, e não em `close()`: aquele também é o
-      // botão X do cabeçalho, e fechar o diálogo para consultar alguma coisa
-      // não pode apagar a anotação que você acabou de escrever.
-      rascunho.descartar();
-      close();
+      concluir();
     });
   }
 
@@ -131,7 +143,7 @@ export function SessionLogger({
             <span className="font-medium">Registrar sessão</span>
             <button
               type="button"
-              onClick={close}
+              onClick={dispensar}
               aria-label="Fechar"
               className="tip text-faint hover:text-ink"
             >
@@ -316,10 +328,10 @@ export function SessionLogger({
           <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-4">
             <button
               type="button"
-              onClick={close}
+              onClick={dispensar}
               className="rounded-lg px-3 py-2 text-sm text-muted hover:text-ink"
             >
-              Cancelar
+              Fechar
             </button>
             <button
               type="submit"
