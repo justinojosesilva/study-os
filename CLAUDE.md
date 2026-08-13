@@ -54,6 +54,7 @@ npm run db:migrate   # apply migrations
 npm run db:seed      # seed sample data; prints DEV_OWNER_ID to put in .env
 npm run db:studio    # Drizzle Studio
 npm run db:rls-table # enable RLS on ONE table: npm run db:rls-table -- ai_usage
+npm run db:ai-limit  # AI cap for ONE person: npm run db:ai-limit -- a@b.com 1 5
 npm run dev          # Next dev server
 ```
 

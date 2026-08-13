@@ -75,6 +75,17 @@ export const users = pgTable("users", {
   // set → the scheduler derives an even spread from weeklyGoalHours. No RLS
   // (users is the identity table), so this stays a plain column here.
   availability: jsonb("availability").$type<number[]>(),
+  /**
+   * Teto de gasto de IA desta pessoa, em milionésimos de dólar. NULL = usa o
+   * padrão de `AI_DAILY_LIMIT_MICROS` / `AI_MONTHLY_LIMIT_MICROS`.
+   *
+   * Existe porque o teto por variável de ambiente é GLOBAL: convidar alguém
+   * significava dar a essa pessoa o mesmo limite do dono, na fatura do dono.
+   * Nulo por padrão de propósito — o dono não precisa configurar nada, e quem
+   * for convidado recebe um teto explícito.
+   */
+  aiDailyLimitMicros: integer("ai_daily_limit_micros"),
+  aiMonthlyLimitMicros: integer("ai_monthly_limit_micros"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

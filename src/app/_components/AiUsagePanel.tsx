@@ -48,7 +48,7 @@ function Barra({ usado, teto, rotulo }: { usado: number; teto: number; rotulo: s
 }
 
 export function AiUsagePanel({ consumo }: { consumo: ConsumoDetalhado }) {
-  const { dia, mes, chamadasHoje, tetoDia, tetoMes, porEndpoint } = consumo;
+  const { dia, mes, chamadasHoje, tetoDia, tetoMes, tetoProprio, porEndpoint } = consumo;
 
   return (
     <section className="mt-8 rounded-xl border border-line bg-surface px-4 py-4">
@@ -60,7 +60,8 @@ export function AiUsagePanel({ consumo }: { consumo: ConsumoDetalhado }) {
         {chamadasHoje === 0
           ? "Nenhuma chamada nas últimas 24h."
           : `${chamadasHoje} ${chamadasHoje === 1 ? "chamada" : "chamadas"} nas últimas 24h.`}{" "}
-        Os tetos são por dono e reabrem por janela móvel, não por virada de mês.
+        Os tetos são por pessoa e reabrem por janela móvel, não por virada de mês.
+        {tetoProprio && " Esta conta tem limite próprio, diferente do padrão."}
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">

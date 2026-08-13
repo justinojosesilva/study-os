@@ -1,6 +1,6 @@
 import { and, gte, eq, sql } from "drizzle-orm";
 import { db, runAsOwner } from "@/infra/db/client";
-import { aiUsage } from "@/infra/db/schema";
+import { aiUsage, users } from "@/infra/db/schema";
 import { MODEL } from "./config";
 
 /**
@@ -47,9 +47,43 @@ export function microsParaReais(micros: number): string {
 
 // --- tetos ------------------------------------------------------------------
 
-/** Padrões generosos para uso pessoal e restritivos para abuso. */
-const TETO_DIA_MICROS = Number(process.env.AI_DAILY_LIMIT_MICROS ?? 5_000_000); // US$ 5
-const TETO_MES_MICROS = Number(process.env.AI_MONTHLY_LIMIT_MICROS ?? 30_000_000); // US$ 30
+/** Padrão da instalação, quando a pessoa não tem teto próprio. */
+const TETO_DIA_PADRAO = Number(process.env.AI_DAILY_LIMIT_MICROS ?? 5_000_000); // US$ 5
+const TETO_MES_PADRAO = Number(process.env.AI_MONTHLY_LIMIT_MICROS ?? 30_000_000); // US$ 30
+
+export type Tetos = { dia: number; mes: number };
+
+/**
+ * Teto EFETIVO de uma pessoa: o dela, com o padrão da instalação como reserva.
+ *
+ * Os limites por variável de ambiente são globais — valem para todo mundo
+ * igual. Convidar alguém significava dar a essa pessoa o mesmo teto do dono, na
+ * fatura do dono. A coluna em `users` resolve isso sem obrigar ninguém a
+ * configurar nada: nulo continua caindo no padrão.
+ *
+ * FALHA FECHADA em valor inválido. Um teto negativo ou não numérico vindo do
+ * banco não pode virar "sem limite" — cai no padrão, que é o mais restritivo
+ * dos dois comportamentos possíveis.
+ */
+function efetivo(valor: number | null, padrao: number): number {
+  return typeof valor === "number" && Number.isFinite(valor) && valor >= 0 ? valor : padrao;
+}
+
+async function tetosNoEscopo(ownerId: string): Promise<Tetos> {
+  const [linha] = await db
+    .select({
+      dia: users.aiDailyLimitMicros,
+      mes: users.aiMonthlyLimitMicros,
+    })
+    .from(users)
+    .where(eq(users.id, ownerId))
+    .limit(1);
+
+  return {
+    dia: efetivo(linha?.dia ?? null, TETO_DIA_PADRAO),
+    mes: efetivo(linha?.mes ?? null, TETO_MES_PADRAO),
+  };
+}
 
 export type Consumo = { dia: number; mes: number; chamadasHoje: number };
 
@@ -84,12 +118,14 @@ export async function consumo(ownerId: string): Promise<Consumo> {
 /**
  * O mesmo consumo, mais os tetos e a quebra por endpoint — o que a tela mostra.
  *
- * Os tetos vêm daqui, e não do componente, porque são lidos de variável de
- * ambiente do servidor: a tela não tem como saber qual valor está valendo.
+ * Os tetos vêm daqui, e não do componente: eles saem da coluna da pessoa ou de
+ * variável de ambiente do servidor, e a tela não tem acesso a nenhuma das duas.
  */
 export type ConsumoDetalhado = Consumo & {
   tetoDia: number;
   tetoMes: number;
+  /** true quando a pessoa tem teto próprio, e não o padrão da instalação. */
+  tetoProprio: boolean;
   porEndpoint: { endpoint: string; micros: number; chamadas: number }[];
 };
 
@@ -98,6 +134,12 @@ export async function consumoDetalhadoNoEscopo(ownerId: string): Promise<Consumo
   const inicioMes = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const base = await consumoNoEscopo(ownerId);
+  const [proprios] = await db
+    .select({ dia: users.aiDailyLimitMicros, mes: users.aiMonthlyLimitMicros })
+    .from(users)
+    .where(eq(users.id, ownerId))
+    .limit(1);
+
   const porEndpoint = await db
     .select({
       endpoint: aiUsage.endpoint,
@@ -109,7 +151,13 @@ export async function consumoDetalhadoNoEscopo(ownerId: string): Promise<Consumo
     .groupBy(aiUsage.endpoint)
     .orderBy(sql`sum(${aiUsage.costMicros}) desc`);
 
-  return { ...base, tetoDia: TETO_DIA_MICROS, tetoMes: TETO_MES_MICROS, porEndpoint };
+  return {
+    ...base,
+    tetoDia: efetivo(proprios?.dia ?? null, TETO_DIA_PADRAO),
+    tetoMes: efetivo(proprios?.mes ?? null, TETO_MES_PADRAO),
+    tetoProprio: proprios?.dia != null || proprios?.mes != null,
+    porEndpoint,
+  };
 }
 
 export type LimiteResultado = { ok: true } | { ok: false; error: string };
@@ -121,17 +169,23 @@ export type LimiteResultado = { ok: true } | { ok: false; error: string };
  */
 export async function dentroDoTeto(ownerId: string): Promise<LimiteResultado> {
   try {
-    const c = await consumo(ownerId);
-    if (c.dia >= TETO_DIA_MICROS) {
+    // Consumo e tetos na MESMA transação: são duas leituras do mesmo dono, e
+    // abrir duas seguraria duas conexões do pool para decidir uma coisa só.
+    const { c, tetos } = await runAsOwner(ownerId, async () => ({
+      c: await consumoNoEscopo(ownerId),
+      tetos: await tetosNoEscopo(ownerId),
+    }));
+
+    if (c.dia >= tetos.dia) {
       return {
         ok: false,
-        error: `Limite diário de IA atingido (${microsParaReais(TETO_DIA_MICROS)}). Ele reabre 24h após as primeiras chamadas.`,
+        error: `Limite diário de IA atingido (${microsParaReais(tetos.dia)}). Ele reabre 24h após as primeiras chamadas.`,
       };
     }
-    if (c.mes >= TETO_MES_MICROS) {
+    if (c.mes >= tetos.mes) {
       return {
         ok: false,
-        error: `Limite mensal de IA atingido (${microsParaReais(TETO_MES_MICROS)}).`,
+        error: `Limite mensal de IA atingido (${microsParaReais(tetos.mes)}).`,
       };
     }
     return { ok: true };

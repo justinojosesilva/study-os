@@ -176,6 +176,13 @@
       "when": 1786492385798,
       "tag": "0024_sleepy_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786663625286,
+      "tag": "0025_goofy_sage",
+      "breakpoints": true
     }
   ]
 }
