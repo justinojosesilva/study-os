@@ -101,15 +101,24 @@ REGRAS:
 - Se você notar que a aula tem um erro conceitual, abra o roteiro com uma seção
   "⚠ Correção da aula técnica" apontando o ponto.`;
 
-/** Monta o pedido de uma seção, com o esqueleto como contexto. */
-export function pedidoSecao(tema: string, esqueleto: string, secao: string): string {
+/**
+ * A parte ESTÁVEL do contexto de uma seção: tema e esqueleto.
+ *
+ * Fica separada porque é idêntica nas 30 chamadas e por isso entra no bloco
+ * cacheado do `system`. Antes ela vivia dentro da mensagem do usuário, junto
+ * com a seção — e como o cache casa por prefixo, nada era reaproveitado: os
+ * ~4 mil tokens do esqueleto eram cobrados a preço cheio trinta vezes.
+ */
+export function contextoEstavel(tema: string, esqueleto: string): string {
   return [
     `Tema da aula: ${tema}`,
     "",
     "Esqueleto completo da aula (para você saber o que vem antes e depois):",
     esqueleto,
-    "",
-    `Escreva AGORA somente esta seção, na íntegra e com profundidade:`,
-    secao,
   ].join("\n");
+}
+
+/** A parte que MUDA a cada chamada. Precisa vir depois do ponto de cache. */
+export function pedidoSecao(secao: string): string {
+  return ["Escreva AGORA somente esta seção, na íntegra e com profundidade:", secao].join("\n");
 }
