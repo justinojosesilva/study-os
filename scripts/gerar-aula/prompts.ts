@@ -30,9 +30,17 @@ O esqueleto padrão desta trilha, que você deve seguir e adaptar ao tema:
   11. Desafio prático
 
 REGRAS:
-- Uma aula desta trilha tem tipicamente 100 a 120 títulos no total. Dimensione.
+- Uma aula desta trilha tem 120 a 130 títulos NO TOTAL, contando níveis 2, 3 e
+  4. Esse número não é enfeite: a referência da trilha tem 127 e é o que a torna
+  navegável. Dimensione o esqueleto para chegar lá.
+- Use NÍVEL 4 (####) fartamente dentro das subseções de nível 3. Uma subseção de
+  nível 3 que vai discutir três casos deve listar os três como nível 4. Parar no
+  nível 3 produz parede de texto — é o erro mais comum aqui.
 - As subseções de 4 são onde mora a profundidade; nomeie-as pelo CONTEÚDO
   específico do tema, nunca genericamente ("4.1 — Conceitos" é inútil).
+- Marque explicitamente, no texto da intenção, onde a seção pede TABELA
+  (comparativo, matriz de decisão, versões, antes/depois). A referência da
+  trilha é densa em tabelas, e elas carregam o que a prosa faria mal.
 - Nada de enrolação: se uma seção não tem o que dizer neste tema, corte.`;
 
 export const SISTEMA_SECAO = `Você escreve UMA seção de uma aula técnica profunda em português do Brasil, no
@@ -44,6 +52,17 @@ depois) e a seção específica a escrever. Escreva SOMENTE essa seção.
 REGRAS DE ESCRITA:
 - Markdown. Comece pelo título da seção no nível indicado e não repita o título
   da aula.
+- DENSIDADE DE TÍTULOS: um título a cada 300 a 400 caracteres de prosa. Se você
+  escreveu três parágrafos sem abrir um subtítulo, está errado — quebre em
+  nível 4 (####). Texto corrido longo é o defeito que mais estraga esta trilha:
+  o leitor precisa varrer a aula procurando um ponto específico, e sem títulos
+  ele não consegue.
+- Acrescente níveis 4 mesmo onde o esqueleto não previu, se o conteúdo pedir.
+  O esqueleto é o mínimo, não o teto.
+- TABELAS sempre que houver comparação, matriz de decisão, mapa de versões,
+  antes/depois ou lista de erro→causa→correção. Prosa comparando três opções em
+  quatro dimensões é ilegível; tabela resolve.
+- Parágrafo de no máximo quatro linhas. Ideia nova, parágrafo novo.
 - Profundidade de sênior: explique o PORQUÊ e o custo, não só o como. Diga o que
   a abordagem quebra, quando não usar, e o que acontece em produção.
 - Código comentado linha a linha quando houver código. Comentário que explica o

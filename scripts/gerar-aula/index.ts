@@ -74,6 +74,18 @@ async function chamar(
     entrada: res.usage?.input_tokens ?? 0,
     saida: res.usage?.output_tokens ?? 0,
   });
+
+  // Truncamento em SILÊNCIO é o pior defeito possível aqui: o esqueleto cortado
+  // no meio de "### 11." parecia pronto, e as seções seriam escritas a partir
+  // dele. Falhar alto custa uma reexecução; aceitar custa uma aula quebrada
+  // descoberta só na hora de estudar por ela.
+  if (res.stop_reason === "max_tokens") {
+    throw new Error(
+      `A resposta bateu no teto de ${maxTokens} tokens e veio cortada. ` +
+        `Nada foi gravado. Aumente o limite desta etapa em scripts/gerar-aula/index.ts.`,
+    );
+  }
+
   return res.content
     .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
     .map((b) => b.text)
@@ -131,7 +143,7 @@ async function main() {
     console.log("esqueleto: reaproveitado do disco");
   } else {
     process.stdout.write("esqueleto: gerando… ");
-    esqueleto = await chamar(client, orc, SISTEMA_ESQUELETO, `Tema da aula: ${tema}`, 4096);
+    esqueleto = await chamar(client, orc, SISTEMA_ESQUELETO, `Tema da aula: ${tema}`, 10000);
     writeFileSync(arqEsq, esqueleto);
     console.log(`ok (${orc.resumo})`);
   }
@@ -172,10 +184,24 @@ async function main() {
   }
 
   const final = join(dir, "aula.md");
-  writeFileSync(final, partes.join("\n\n---\n\n") + "\n");
-  const chars = partes.join("").length;
+  const texto = partes.join("\n\n---\n\n") + "\n";
+  writeFileSync(final, texto);
+
+  // Títulos contados FORA de blocos cercados: `# comentario` em bash não é
+  // título, e contar sem esse cuidado inflou a medição por 30 numa comparação.
+  let dentro = false;
+  let titulos = 0;
+  for (const l of texto.split("\n")) {
+    if (/^\s*```/.test(l)) dentro = !dentro;
+    else if (!dentro && /^#{2,4}\s/.test(l)) titulos += 1;
+  }
+
   console.log(`\n${final}`);
-  console.log(`  ${chars} chars . ${final.split("\n").length} secoes montadas`);
+  console.log(`  ${texto.length} chars . ${partes.length} seções . ${titulos} títulos`);
+  if (titulos < 100) {
+    console.log(`  AVISO: a referência da trilha tem ~127 títulos. Abaixo de 100 costuma`);
+    console.log(`         indicar parede de texto — vale reler antes de estudar por ela.`);
+  }
   console.log(`  total: ${orc.resumo}`);
 }
 
