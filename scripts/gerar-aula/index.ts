@@ -304,7 +304,10 @@ async function main() {
     console.log("esqueleto: reaproveitado do disco");
   } else {
     process.stdout.write("esqueleto: gerando… ");
-    esqueleto = await chamar(client, orc, SISTEMA_ESQUELETO, `Tema da aula: ${tema}`, 10000);
+    // 16 mil e não 10 mil porque o teto de etapa é do MODELO, não do prompt: o
+    // Opus fecha o mesmo esqueleto em 3,7 mil tokens e o Sonnet 5 estourou os
+    // 10 mil. Apertar aqui reprovaria o modelo por um limite meu.
+    esqueleto = await chamar(client, orc, SISTEMA_ESQUELETO, `Tema da aula: ${tema}`, 16000);
     writeFileSync(arqEsq, esqueleto);
     console.log(`ok (${orc.resumo})`);
   }
