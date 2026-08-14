@@ -51,6 +51,28 @@ export function microsParaReais(micros: number): string {
 const TETO_DIA_PADRAO = Number(process.env.AI_DAILY_LIMIT_MICROS ?? 5_000_000); // US$ 5
 const TETO_MES_PADRAO = Number(process.env.AI_MONTHLY_LIMIT_MICROS ?? 30_000_000); // US$ 30
 
+/**
+ * Teto de quem entra AGORA — gravado na criação da linha em `users`.
+ *
+ * Sem isto havia uma janela: a pessoa só existe em `users` no primeiro login,
+ * então definir o teto dela exigia esperar ela entrar. Nessa janela ela usava o
+ * padrão da instalação, que é o teto do dono, na fatura do dono.
+ *
+ * Os números saem de medição, não de chute. O dia 1 de alguém entusiasmado
+ * custa US$ 1,30 a 1,50 — roadmap, agrupar em fases, importar currículo, gerar
+ * currículo e análise de lacunas são todos one-shots de onboarding. US$ 3/dia
+ * cobre isso com folga, então ninguém bate a parede logo na estreia. O mensal
+ * de US$ 8 é o que de fato limita a exposição: pouco acima do uso mensal real
+ * medido do dono, que é ~US$ 7,20 com estudo diário pesado.
+ *
+ * O dono não é afetado — a linha dele já existe, e `onConflictDoUpdate` não
+ * toca nestas colunas.
+ */
+export const TETO_NOVO_USUARIO = {
+  dia: Number(process.env.AI_NEW_USER_DAILY_LIMIT_MICROS ?? 3_000_000), // US$ 3
+  mes: Number(process.env.AI_NEW_USER_MONTHLY_LIMIT_MICROS ?? 8_000_000), // US$ 8
+};
+
 export type Tetos = { dia: number; mes: number };
 
 /**

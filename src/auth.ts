@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import GitHub from "next-auth/providers/github";
 import { db } from "@/infra/db/client";
 import { users } from "@/infra/db/schema";
+import { TETO_NOVO_USUARIO } from "@/domain/ai/usage";
 
 declare module "next-auth" {
   interface Session {
@@ -65,9 +66,19 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (user?.email && allowedEmails().has(user.email.trim().toLowerCase())) {
         const [row] = await db
           .insert(users)
-          .values({ email: user.email, name: user.name ?? null })
+          .values({
+            email: user.email,
+            name: user.name ?? null,
+            // O teto entra JUNTO com a linha. Antes ele só podia ser definido
+            // depois do primeiro login, e nessa janela a pessoa nova usava o
+            // padrão da instalação — o teto do dono, na fatura do dono.
+            aiDailyLimitMicros: TETO_NOVO_USUARIO.dia,
+            aiMonthlyLimitMicros: TETO_NOVO_USUARIO.mes,
+          })
           .onConflictDoUpdate({
             target: users.email,
+            // Só o nome. Os tetos ficam de fora de propósito: relogar não pode
+            // desfazer um limite que o dono ajustou com `db:ai-limit`.
             set: { name: user.name ?? null },
           })
           .returning({ id: users.id });
