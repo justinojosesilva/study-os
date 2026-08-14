@@ -42,5 +42,15 @@
     "owner": "Justino",
     "reviewBy": "2026-09-13",
     "status": "ativa"
+  },
+  {
+    "id": "DEC-004",
+    "date": "2026-08-13",
+    "decision": "Adiar o congelamento de sequência à la Duolingo. Corrigir a régua com uma sequência TOLERANTE (6 dos últimos 7 dias mantêm a corrente) e observar antes de somar mecânica nova.",
+    "reason": "A ideia partiu de 'faltam prêmios', mas a medição apontou outra coisa: 23 dias de estudo em 25 corridos — 92% de constância — apareciam como '1 dia seguido', porque duas falhas isoladas picotaram um recorde de 23 em pedaços de 11 e 2. A conquista de 30 dias era inalcançável para alguém tão constante. Congelamento consertaria o sintoma; a régua continuaria medindo ausência de imprevisto em vez de constância. E num sistema de um usuário só, congelamento que a própria pessoa se concede é circular: ela ganha o direito de faltar por não ter faltado. Sem loja, sem assinatura e sem escassez real, o saldo vira só um contador a administrar — contra o princípio da base, onde tudo é derivado do log de eventos.",
+    "alternative": "Congelamento visível, com saldo mensal gasto automaticamente. Continua na mesa para UM caso que a tolerância não resolve: ausência longa e planejada, tipo uma viagem de duas semanas. Aí o saldo teria propósito próprio em vez de duplicar a regra. Reavaliar só depois de conviver com a tolerância — e só se aparecer uma ausência longa de verdade.",
+    "owner": "Justino",
+    "reviewBy": "2026-09-13",
+    "status": "ativa"
   }
 ]
