@@ -27,11 +27,88 @@ export async function minutesStudiedSince(ownerId: string, since: Date) {
 }
 
 /**
- * Current consecutive-day study streak, derived from the distinct local dates
- * that have at least one session. Pulls distinct days, then walks backwards
- * from today counting unbroken days.
+ * Sequência de estudo, TOLERANTE a falhas isoladas.
+ *
+ * POR QUE NÃO É DIA-A-DIA ESTRITO. A regra anterior quebrava a sequência em
+ * qualquer dia faltado. Medido na base real: 23 dias de estudo em 25 corridos —
+ * 92% de constância — viravam "1 dia seguido" no painel, porque dois dias
+ * isolados picotaram o recorde em pedaços de 11 e 2. A conquista de 30 dias
+ * seguidos era inalcançável para alguém tão constante quanto isso. O número não
+ * estava medindo constância, estava medindo ausência de imprevisto.
+ *
+ * A REGRA. Caminhando para trás, um dia faltado não quebra a sequência se, na
+ * janela de 7 dias terminando nele, houver ao menos 6 dias estudados. Cair para
+ * 5 de 7 quebra. Dia perdoado NÃO conta como dia estudado: ele só não
+ * interrompe a contagem.
+ *
+ * Isso é derivado, não guardado — não há saldo de congelamento para
+ * administrar, no mesmo espírito do resto do app, onde progresso vem do log de
+ * eventos e nunca de um contador.
+ *
+ * `span` é a distância da âncora até o último dia estudado da corrente, e
+ * `constancia` é `dias / span`. São eles que explicam o número na tela: "23 de
+ * 25 · 92%" torna óbvio por que a sequência não quebrou.
  */
-export async function currentStreak(ownerId: string): Promise<number> {
+const TOLERANCIA_JANELA = 7;
+const TOLERANCIA_MINIMO = 6;
+/** Teto de segurança do caminhamento — a sequência não olha além de um ano. */
+const TOLERANCIA_LIMITE = 365;
+
+export type Sequencia = {
+  /** Dias efetivamente estudados na corrente. */
+  dias: number;
+  /** Dias corridos da âncora até o último dia estudado da corrente. */
+  span: number;
+  /** `dias / span`, de 0 a 1. */
+  constancia: number;
+};
+
+/**
+ * A regra, isolada do banco. Recebe o conjunto de dias com estudo (chaves
+ * locais) e a data de referência; devolve a sequência.
+ *
+ * Separada porque a regra é o que pode estar errado — a consulta não. Assim ela
+ * se testa com conjuntos sintéticos, sem precisar semear banco.
+ */
+export function calcularSequencia(days: Set<string>, hoje: Date): Sequencia {
+  let ancora = hoje;
+  // Allow the streak to count today OR yesterday as the anchor.
+  if (!days.has(toDateKey(ancora))) ancora = addDays(ancora, -1);
+  if (!days.has(toDateKey(ancora))) return { dias: 0, span: 0, constancia: 0 };
+
+  const estudadosNaJanela = (fim: Date) => {
+    let n = 0;
+    for (let i = 0; i < TOLERANCIA_JANELA; i++) {
+      if (days.has(toDateKey(addDays(fim, -i)))) n += 1;
+    }
+    return n;
+  };
+
+  let dias = 0;
+  let ultimoEstudado: Date | null = null;
+  let cursor = ancora;
+
+  for (let i = 0; i < TOLERANCIA_LIMITE; i++) {
+    if (days.has(toDateKey(cursor))) {
+      dias += 1;
+      ultimoEstudado = cursor;
+    } else if (estudadosNaJanela(cursor) < TOLERANCIA_MINIMO) {
+      break;
+    }
+    cursor = addDays(cursor, -1);
+  }
+
+  // O span termina no último dia ESTUDADO, não onde o caminhamento parou —
+  // senão uma falha perdoada logo antes da quebra entraria na conta e afundaria
+  // a constância sem motivo.
+  const span = ultimoEstudado
+    ? Math.round((ancora.getTime() - ultimoEstudado.getTime()) / 86_400_000) + 1
+    : 0;
+
+  return { dias, span, constancia: span > 0 ? dias / span : 0 };
+}
+
+export async function streakDetail(ownerId: string): Promise<Sequencia> {
   const rows = await db
     .select({ startedAt: studySessions.startedAt })
     .from(studySessions)
@@ -42,16 +119,12 @@ export async function currentStreak(ownerId: string): Promise<number> {
   // streak. Same approach — and the same personal-scale volume argument — as
   // dailyStudyMinutes below.
   const days = new Set(rows.map((r) => toDateKey(r.startedAt)));
+  return calcularSequencia(days, new Date());
+}
 
-  let streak = 0;
-  let cursor = new Date();
-  // Allow the streak to count today OR yesterday as the anchor.
-  if (!days.has(toDateKey(cursor))) cursor = addDays(cursor, -1);
-  while (days.has(toDateKey(cursor))) {
-    streak += 1;
-    cursor = addDays(cursor, -1);
-  }
-  return streak;
+/** Só o número de dias — o que conquistas e currículo consomem. */
+export async function currentStreak(ownerId: string): Promise<number> {
+  return (await streakDetail(ownerId)).dias;
 }
 
 /**

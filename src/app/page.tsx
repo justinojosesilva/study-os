@@ -101,10 +101,19 @@ export default async function DashboardPage() {
 
       <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <WeeklyCard hours={data.weekHours} goal={data.weekGoalHours} />
+        {/* A constância vai junto porque a sequência é TOLERANTE: sem ela, um
+            número maior que os dias corridos sem falha parece erro. "23 · 92%
+            de 25 dias" explica sozinho por que faltar uma terça não zerou. */}
         <Metric
           label="Sequência"
           value={`${data.streak}`}
-          hint={data.streak === 1 ? "dia seguido" : "dias seguidos"}
+          hint={
+            data.streakSpan > data.streak
+              ? `${Math.round(data.streakConstancia * 100)}% de ${data.streakSpan} dias`
+              : data.streak === 1
+                ? "dia seguido"
+                : "dias seguidos"
+          }
         />
         <Metric label="Objetivos ativos" value={`${data.activeGoals}`} />
         <Metric

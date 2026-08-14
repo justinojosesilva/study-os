@@ -165,8 +165,8 @@ function buildAchievements(s: {
 }): Achievement[] {
   return [
     { id: "first_session", label: "Primeiro passo", description: "Registre sua primeira sessão de estudo", unlocked: s.minutes > 0 },
-    { id: "streak_7", label: "Semana de fogo", description: "7 dias seguidos estudando", unlocked: s.streak >= 7 },
-    { id: "streak_30", label: "Constância de ferro", description: "30 dias seguidos estudando", unlocked: s.streak >= 30 },
+    { id: "streak_7", label: "Semana de fogo", description: "7 dias na sequência de estudo", unlocked: s.streak >= 7 },
+    { id: "streak_30", label: "Constância de ferro", description: "30 dias na sequência de estudo", unlocked: s.streak >= 30 },
     { id: "hours_10", label: "Dez horas", description: "Acumule 10 horas de estudo", unlocked: s.minutes >= 600 },
     { id: "hours_50", label: "Maratonista", description: "Acumule 50 horas de estudo", unlocked: s.minutes >= 3000 },
     { id: "first_mastered", label: "Primeiro domínio", description: "Domine seu primeiro tópico", unlocked: s.mastered >= 1 },

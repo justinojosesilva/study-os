@@ -1,7 +1,7 @@
 import { db } from "@/infra/db/client";
 import { goals, topics } from "@/infra/db/schema";
 import { and, eq, asc, sql } from "drizzle-orm";
-import { minutesStudiedSince, currentStreak, earnedWeightSql } from "./metrics";
+import { minutesStudiedSince, streakDetail, earnedWeightSql } from "./metrics";
 import { getWeeklyGoalHours } from "./user/repository";
 import { startOfWeek } from "@/lib/date";
 
@@ -21,6 +21,9 @@ export type DashboardData = {
   weekHours: number;
   weekGoalHours: number;
   streak: number;
+  /** Dias corridos e constância da corrente — explicam o número da sequência. */
+  streakSpan: number;
+  streakConstancia: number;
   activeGoals: number;
   masteredTopics: number;
   totalTopics: number;
@@ -34,7 +37,7 @@ export type DashboardData = {
 export async function getDashboardData(ownerId: string): Promise<DashboardData> {
   const [minutes, streak, goalRows, topicTotals, weekGoalHours] = await Promise.all([
     minutesStudiedSince(ownerId, startOfWeek()),
-    currentStreak(ownerId),
+    streakDetail(ownerId),
     goalsWithProgress(ownerId),
     topicCounts(ownerId),
     getWeeklyGoalHours(ownerId),
@@ -43,7 +46,9 @@ export async function getDashboardData(ownerId: string): Promise<DashboardData> 
   return {
     weekHours: Math.round((minutes / 60) * 10) / 10,
     weekGoalHours,
-    streak,
+    streak: streak.dias,
+    streakSpan: streak.span,
+    streakConstancia: streak.constancia,
     activeGoals: goalRows.length,
     masteredTopics: topicTotals.mastered,
     totalTopics: topicTotals.total,
