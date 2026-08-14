@@ -31,8 +31,45 @@ import {
  * teto explícito por execução, que o script anuncia e respeita.
  */
 
-const PRECO = { entrada: 5, saida: 25 }; // US$ por milhão de tokens, opus-4-8
 const MODEL = process.env.AULA_MODEL ?? "claude-opus-4-8";
+
+/**
+ * US$ por milhão de tokens, por modelo.
+ *
+ * Fica tabelado porque o modelo é trocável por env, e preço cravado num número
+ * só faz o orçamento e o relatório MENTIREM ao trocar — o teto pararia de
+ * proteger e a comparação de custo entre modelos ficaria inútil.
+ */
+const TABELA_PRECOS: Record<string, { entrada: number; saida: number }> = {
+  "claude-opus-5": { entrada: 5, saida: 25 },
+  "claude-opus-4-8": { entrada: 5, saida: 25 },
+  "claude-sonnet-5": { entrada: 3, saida: 15 },
+  "claude-sonnet-4-6": { entrada: 3, saida: 15 },
+  "claude-haiku-4-5": { entrada: 1, saida: 5 },
+};
+
+/**
+ * Sonnet 5 está em preço de introdução até 31/08/2026 — US$ 2/US$ 10 em vez de
+ * US$ 3/US$ 15. Fica como janela com data e não como número fixo: passada a
+ * data, a conta volta sozinha ao preço cheio em vez de subestimar em silêncio.
+ */
+const FIM_INTRO_SONNET5 = new Date("2026-09-01T00:00:00Z");
+
+function precoDe(modelo: string) {
+  const p = TABELA_PRECOS[modelo];
+  if (!p) {
+    throw new Error(
+      `Modelo "${modelo}" não está em TABELA_PRECOS. Adicione o preço antes de ` +
+        `usar — sem ele o orçamento não protege nada.`,
+    );
+  }
+  if (modelo === "claude-sonnet-5" && new Date() < FIM_INTRO_SONNET5) {
+    return { entrada: 2, saida: 10 };
+  }
+  return p;
+}
+
+const PRECO = precoDe(MODEL);
 
 /**
  * Multiplicadores do cache de prompt. Ler custa 0,1× a entrada; ESCREVER custa
@@ -254,7 +291,10 @@ async function main() {
   const client = new Anthropic();
   const orc = new Orcamento(tetoUSD);
   console.log(`tema: ${tema}`);
-  console.log(`saida: ${dir}/ . orcamento: US$ ${tetoUSD.toFixed(2)} . modelo: ${MODEL}\n`);
+  console.log(
+    `saida: ${dir}/ . orcamento: US$ ${tetoUSD.toFixed(2)} . modelo: ${MODEL} ` +
+      `(US$ ${PRECO.entrada}/${PRECO.saida} por Mtok)\n`,
+  );
 
   // --- 1. esqueleto (retomavel) ---
   const arqEsq = join(dir, "_esqueleto.md");
