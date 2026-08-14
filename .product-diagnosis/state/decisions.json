@@ -32,5 +32,15 @@
     "owner": "Justino",
     "reviewBy": "2026-09-09",
     "status": "aguardando-dados"
+  },
+  {
+    "id": "DEC-003",
+    "date": "2026-08-13",
+    "decision": "Não construir a fase 2 do módulo de materiais. Manter o catálogo como está e não investir na ligação material↔sessão/aula.",
+    "reason": "O portão de 22/08 pedia 5 ligações e deu ZERO — 0 de 10 sessões e 0 de 25 aulas criadas desde que o seletor existe. Não é falta de caminho: confirmado que o seletor 'Material (opcional)' está no diálogo de sessão e no de aulas. É a porta não sendo usada, com 35 oportunidades em uma semana. O catálogo em si TEM uso (10 materiais cadastrados), então o que serve é 'lista do que quero ler'; a maquinaria de 'o material mostra o que rendeu' ficou sem entrada, e `materialUsage` devolve vazio sempre. Quarta vez nesta base em que a medição derruba uma expansão que parecia razoável no papel.",
+    "alternative": "Investigar por que a ligação não é usada e reduzir o atrito do seletor. Descartado por ora: gastar esforço em descobrir como fazer usar uma feature sem sinal de demanda é o mesmo erro, um nível acima. Se em duas semanas continuar zerado, a opção honesta passa a ser REMOVER a ligação — código não usado ainda custa, porque aparece em toda leitura do schema e em toda decisão futura sobre aquelas tabelas.",
+    "owner": "Justino",
+    "reviewBy": "2026-09-13",
+    "status": "ativa"
   }
 ]

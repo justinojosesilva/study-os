@@ -3,17 +3,31 @@
     "id": "EXP-001",
     "opportunityRef": "OPP-002",
     "runRef": "runs/2026-08-08T17-06",
-    "hypothesis": "Se cada botão mostrar quando a carta volta, a escolha vira informada e a distribuição das notas deixa de se concentrar em 'Difícil'. Resultado parcial em 08/08: 83,8% em 74 revisões, contra meta de 35%. Segue rodando porque uma sessão só carrega efeito de novidade; critério de estabilização em 22/08 é ficar acima de 60%.",
+    "hypothesis": "Se cada botão mostrar quando a carta volta, a escolha vira informada e a distribuição das notas deixa de se concentrar em 'Difícil'. Resultado parcial em 08/08: 83,8% em 74 revisões, contra meta de 35%. Segue rodando porque uma sessão só carrega efeito de novidade; critério de estabilização em 22/08 é ficar acima de 60%. FECHADO em 13/08, nove dias antes do prazo, por leitura antecipada: 90,0% em 165 revisões — acima dos 83,8% parciais e muito acima do critério de 60%. A amostra mais que dobrou, então não era efeito de novidade.",
     "change": "Cada botão da revisão passou a exibir o intervalo resultante, calculado com scheduler.repeat().",
     "metric": "share_bom_mais_facil",
     "baseline": 0.15,
     "baselineEvidenceRef": "EV-002",
     "target": 0.35,
-    "result": 0.838,
-    "sampleSize": 74,
+    "result": 0.9,
+    "sampleSize": 165,
     "startedAt": "2026-08-08",
     "endsAt": "2026-08-22",
-    "status": "rodando",
-    "outcome": null
+    "status": "concluido",
+    "outcome": "promover"
+  },
+  {
+    "id": "EXP-002",
+    "hypothesis": "Se a sessão de estudo e a aula puderem apontar para o material de onde vieram, o dono vai ligá-las, e o material passa a mostrar o que rendeu. Portão combinado em 08/08: pelo menos 5 ligações até 22/08, senão a expansão do módulo de materiais não se justifica. Registrado retroativamente no fechamento — o portão existia como combinado, não como experimento formal.",
+    "change": "Seletor 'Material (opcional)' no diálogo de sessão e no de aulas, gravando material_id.",
+    "metric": "ligacoes_material_id",
+    "baseline": 0,
+    "target": 5,
+    "result": 0,
+    "sampleSize": 35,
+    "startedAt": "2026-08-07",
+    "endsAt": "2026-08-22",
+    "status": "concluido",
+    "outcome": "descartar"
   }
 ]
