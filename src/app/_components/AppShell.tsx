@@ -87,9 +87,25 @@ const OVERFLOW_ITEMS = ALL_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i.href))
 /**
  * Global app shell: a persistent left sidebar on desktop (≥lg) grouped into
  * sections, and a sticky top bar on mobile (<lg), both with active-route
- * highlighting. Auth screens render shell-less. `signOut` is a server component
- * passed down from the root layout.
+ * highlighting. Auth and public pages render shell-less. `signOut` is a server
+ * component passed down from the root layout.
  */
+
+/**
+ * Rotas servidas SEM a casca do app.
+ *
+ * Lista e não condição solta porque ela cresce: era só `/signin` e `/r/`, e a
+ * aula compartilhada em `/a/` entrou fora dela — o link público saía com a
+ * barra lateral inteira, oferecendo Dashboard, Anotações e Currículo para
+ * alguém que não tem conta. Quem adicionar a próxima superfície pública mexe
+ * aqui, num lugar só.
+ */
+const PREFIXOS_SEM_SHELL = ["/r/", "/a/"];
+
+function semShell(pathname: string): boolean {
+  return pathname === "/signin" || PREFIXOS_SEM_SHELL.some((p) => pathname.startsWith(p));
+}
+
 export function AppShell({
   user,
   signOut,
@@ -113,8 +129,7 @@ export function AppShell({
     document.cookie = `sidebar=${next ? "collapsed" : "open"}; path=/; max-age=31536000; samesite=lax`;
   }
 
-  // Auth screens and the public résumé page have no shell.
-  if (pathname === "/signin" || pathname.startsWith("/r/")) return <>{children}</>;
+  if (semShell(pathname)) return <>{children}</>;
 
   return (
     <>

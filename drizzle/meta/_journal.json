@@ -183,6 +183,13 @@
       "when": 1786663625286,
       "tag": "0025_goofy_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786812203346,
+      "tag": "0026_low_jocasta",
+      "breakpoints": true
     }
   ]
 }

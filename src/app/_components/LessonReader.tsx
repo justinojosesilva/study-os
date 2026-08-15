@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   ChevronsDownUp,
   ChevronsUpDown,
@@ -13,6 +14,7 @@ import { saveReadingProgressAction } from "@/app/_actions/reading";
 import type { Heading } from "@/lib/headings";
 import type { LessonNote as LessonNoteItem } from "@/domain/notes/repository";
 import { LessonContent } from "./LessonContent";
+import { LessonShareMenu } from "./LessonShareMenu";
 import { ReaderSettings } from "./ReaderSettings";
 import { SelectionTools } from "./SelectionTools";
 import { LessonNotes } from "./LessonNotes";
@@ -50,6 +52,9 @@ export function LessonReader({
   initialPercent,
   initialAnchor,
   anchoredNotes,
+  title,
+  isPublic,
+  publicSlug,
 }: {
   lessonId: string;
   topicId: string;
@@ -60,6 +65,9 @@ export function LessonReader({
   initialPercent: number;
   initialAnchor: string | null;
   anchoredNotes: LessonNoteItem[];
+  title: string;
+  isPublic: boolean;
+  publicSlug: string | null;
 }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [percent, setPercent] = useState(initialPercent);
@@ -71,6 +79,25 @@ export function LessonReader({
       initialPercent >= RESUME_MIN_PERCENT &&
       initialPercent <= RESUME_MAX_PERCENT,
   );
+
+  /**
+   * Expande TUDO antes de imprimir.
+   *
+   * Seção recolhida não fica escondida por CSS — `MdSection` simplesmente não
+   * renderiza o corpo. Sem isto, imprimir com seções recolhidas produziria uma
+   * aula com buracos e nada avisaria: o papel sai bonito, só que faltando
+   * metade. Nenhuma regra de @media print alcança um nó que não existe.
+   *
+   * `flushSync` porque o navegador monta o layout de impressão logo depois do
+   * evento — um setState normal chegaria tarde demais, e a versão impressa
+   * sairia do jeito que estava. O listener cobre também o Ctrl+P, que é como a
+   * maioria das impressões começa.
+   */
+  useEffect(() => {
+    const antes = () => flushSync(() => setCollapsed(new Set()));
+    window.addEventListener("beforeprint", antes);
+    return () => window.removeEventListener("beforeprint", antes);
+  }, []);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<{ slug: string | null; percent: number }>({
@@ -307,7 +334,7 @@ export function LessonReader({
       {/* Progress sits at the very top of the viewport: it is the one piece of
           state that has to stay legible through 80 screens. */}
       <div
-        className="fixed inset-x-0 top-0 z-30 h-0.5 bg-profissional/70 transition-[width] duration-150"
+        className="no-print fixed inset-x-0 top-0 z-30 h-0.5 bg-profissional/70 transition-[width] duration-150"
         style={{ width: `${percent}%` }}
         role="progressbar"
         aria-valuenow={percent}
@@ -316,7 +343,13 @@ export function LessonReader({
         aria-label="Progresso da leitura"
       />
 
-      <div className="mb-4 flex items-center justify-end">
+      <div className="no-print mb-4 flex items-center justify-end gap-1">
+        <LessonShareMenu
+          lessonId={lessonId}
+          title={title}
+          isPublic={isPublic}
+          slug={publicSlug}
+        />
         <ReaderSettings
           prefs={prefs}
           update={update}
@@ -327,7 +360,7 @@ export function LessonReader({
       </div>
 
       {showResume && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-profissional/30 bg-profissional-soft px-4 py-3">
+        <div className="no-print mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-profissional/30 bg-profissional-soft px-4 py-3">
           <CornerDownLeft size={16} className="shrink-0 text-profissional" />
           {/* Nomeia a seção, não o percentual. Os dois medem coisas
               diferentes — o percentual guarda o ponto mais longe já alcançado,
@@ -364,6 +397,7 @@ export function LessonReader({
             mediu o wrapper, que é onde eu escrevia, e não o texto. */}
         <div
           ref={contentRef}
+          data-reader-surface
           className={`relative min-w-0 flex-1 rounded-xl transition-colors ${
             prefs.family === "serif" ? "font-serif" : ""
           } ${prefs.surface === "sistema" ? "" : "px-5 py-4"}`}
@@ -463,7 +497,7 @@ function Toc({
     return (
       <nav
         aria-label="Índice da aula"
-        className="sticky top-8 hidden h-[calc(100vh-6rem)] w-9 shrink-0 flex-col items-center gap-3 xl:flex"
+        className="no-print sticky top-8 hidden h-[calc(100vh-6rem)] w-9 shrink-0 flex-col items-center gap-3 xl:flex"
       >
         <button
           type="button"
@@ -484,7 +518,7 @@ function Toc({
   return (
     <nav
       aria-label="Índice da aula"
-      className="sticky top-8 hidden h-[calc(100vh-6rem)] w-60 shrink-0 flex-col xl:flex"
+      className="no-print sticky top-8 hidden h-[calc(100vh-6rem)] w-60 shrink-0 flex-col xl:flex"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted">

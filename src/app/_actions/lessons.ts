@@ -7,6 +7,7 @@ import {
   updateLesson,
   deleteLesson,
   setLessonCompleted,
+  setLessonPublic,
 } from "@/domain/lessons/repository";
 import { ownsTopic } from "@/domain/sessions/repository";
 import { ownsMaterial } from "@/domain/materials/repository";
@@ -85,5 +86,24 @@ export async function setLessonCompletedAction(
     if (goalId) revalidatePath(`/goals/${goalId}`);
     revalidatePath(`/lessons/${lessonId}`);
     return { ok: true };
+  });
+}
+
+/**
+ * Publica ou despublica uma aula, devolvendo o slug para a UI montar o link.
+ *
+ * A checagem de posse não é feita aqui: `setLessonPublic` filtra por ownerId na
+ * própria query e devolve null se não achar. Uma checagem separada seria uma
+ * segunda fonte de verdade para a mesma pergunta.
+ */
+export async function setLessonPublicAction(
+  lessonId: string,
+  isPublic: boolean,
+): Promise<{ ok: true; isPublic: boolean; slug: string | null } | { ok: false; error: string }> {
+  return scoped(async (ownerId) => {
+    const res = await setLessonPublic(ownerId, lessonId, isPublic);
+    if (!res) return { ok: false as const, error: "Aula não encontrada." };
+    revalidatePath(`/lessons/${lessonId}`);
+    return { ok: true as const, isPublic: res.isPublic, slug: res.slug };
   });
 }

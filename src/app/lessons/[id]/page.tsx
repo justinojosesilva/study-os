@@ -30,13 +30,15 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
 
     return (
       <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:py-12">
-        <Breadcrumbs
-          items={[
-            { label: "Dashboard", href: "/" },
-            { label: lesson.goalTitle, href: `/goals/${lesson.goalId}` },
-            { label: lesson.title },
-          ]}
-        />
+        <div className="no-print">
+          <Breadcrumbs
+            items={[
+              { label: "Dashboard", href: "/" },
+              { label: lesson.goalTitle, href: `/goals/${lesson.goalId}` },
+              { label: lesson.title },
+            ]}
+          />
+        </div>
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-faint">
           {lesson.topicTitle}
         </p>
@@ -81,15 +83,22 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
           minutes={minutes}
           initialPercent={progress?.percent ?? 0}
           initialAnchor={progress?.anchorSlug ?? null}
+          title={lesson.title}
+          isPublic={lesson.isPublic}
+          publicSlug={lesson.publicSlug}
         />
 
-        <LessonDoneButton
-          lessonId={lesson.id}
-          goalId={lesson.goalId}
-          completedAt={lesson.completedAt}
-        />
+        <div className="no-print">
+          <LessonDoneButton
+            lessonId={lesson.id}
+            goalId={lesson.goalId}
+            completedAt={lesson.completedAt}
+          />
+        </div>
 
-        <FloatingSessionLogger topicId={lesson.topicId} topicTitle={lesson.topicTitle} />
+        <div className="no-print">
+          <FloatingSessionLogger topicId={lesson.topicId} topicTitle={lesson.topicTitle} />
+        </div>
       </main>
     );
   });

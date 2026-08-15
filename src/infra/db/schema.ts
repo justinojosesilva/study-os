@@ -371,6 +371,12 @@ export const lessons = pgTable(
     // the "when" that a boolean throws away, and null reads naturally as "not
     // done yet" without a default to maintain.
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    // Compartilhamento público, no mesmo desenho de `resume_profiles`: slug
+    // aleatório impossível de enumerar + flag. Só linhas com is_public são
+    // servidas em /a/[slug]. Slug nasce null e só é cunhado na 1ª publicação —
+    // aula nunca publicada não tem sequer um endereço para vazar.
+    publicSlug: text("public_slug"),
+    isPublic: boolean("is_public").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -378,6 +384,7 @@ export const lessons = pgTable(
     index("lessons_owner_idx").on(t.ownerId),
     index("lessons_topic_idx").on(t.topicId),
     index("lessons_material_idx").on(t.materialId),
+    uniqueIndex("lessons_public_slug_idx").on(t.publicSlug),
   ],
 );
 

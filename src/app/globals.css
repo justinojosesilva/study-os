@@ -251,11 +251,13 @@ dialog {
   background-clip: padding-box;
 }
 
-/* Print — strip the app shell and editor chrome so only the résumé sheet prints,
-   forced to clean black-on-white regardless of the on-screen theme. */
+/* Print — tira a casca do app (barra, navegação, controles) e força preto sobre
+   branco, qualquer que seja o tema na tela. Vale para o currículo e para a aula;
+   as regras específicas de cada um vêm depois das globais. */
 @media print {
   aside,
   header,
+  nav,
   .no-print {
     display: none !important;
   }
@@ -267,6 +269,15 @@ dialog {
   }
   body {
     background: #fff;
+  }
+  /* O app tem tema escuro. Sem isto, todo texto FORA do `.prose` herda a cor
+     clara e imprime branco sobre branco — foi exatamente o que aconteceu com o
+     h1 da aula, que saiu invisível e ninguém notaria a não ser conferindo o
+     papel. Regra global porque o alvo é "tudo que o navegador ainda vai pintar",
+     e enumerar elementos deixa sempre um de fora. */
+  body,
+  body * {
+    color: #111 !important;
   }
   .resume-sheet {
     max-width: 100% !important;
@@ -281,6 +292,87 @@ dialog {
   }
   .resume-sheet [class*="border"] {
     border-color: #ddd !important;
+  }
+
+  /* --- Aula impressa -----------------------------------------------------
+     Uma aula tem em média 70 mil caracteres — cerca de 28 páginas. Nesse
+     tamanho, o que estraga a impressão não é a cor: é bloco de código partido
+     ao meio e título órfão no pé da página. As regras abaixo atacam isso.
+
+     O corpo do texto é forçado a preto sobre branco porque o leitor tem temas
+     (sépia, papel) e modo escuro — imprimir sépia gasta tinta e sai cinza.
+     Blocos de código são a exceção: viram uma caixa clara com borda, já que
+     o tema `github-dark` do highlighter sairia como um retângulo preto sólido.
+  --------------------------------------------------------------------------*/
+  .prose {
+    max-width: 100% !important;
+    color: #111 !important;
+    font-size: 10.5pt !important;
+  }
+  .prose p,
+  .prose li {
+    max-width: none !important; /* a medida de leitura é de tela, não de papel */
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4 {
+    color: #111 !important;
+    break-after: avoid; /* título nunca fica sozinho no pé da página */
+    break-inside: avoid;
+  }
+  .prose h2 {
+    break-before: page; /* cada seção de nível 2 começa em página nova */
+  }
+  .prose h2:first-of-type {
+    break-before: auto;
+  }
+  .prose pre,
+  .prose table,
+  .prose blockquote,
+  .prose figure,
+  .md-section img {
+    break-inside: avoid;
+  }
+  .prose pre {
+    background: #f6f8fa !important;
+    border: 1px solid #d8dee4 !important;
+    color: #111 !important;
+    white-space: pre-wrap !important; /* código largo corta na direita sem isto */
+    word-break: break-word;
+  }
+  .prose pre * {
+    color: #111 !important;
+    background: transparent !important;
+  }
+  .prose a {
+    text-decoration: underline;
+  }
+  /* O botão de dobrar seção é controle de tela; no papel vira um chevron solto
+     na margem de cada seção. */
+  .md-section button[aria-expanded] {
+    display: none !important;
+  }
+  /* O endereço atrás do link, que no papel some. Só para links externos —
+     âncoras internas (#secao) virariam ruído em toda linha do índice. */
+  .prose a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 8.5pt;
+    color: #555;
+    word-break: break-all;
+  }
+  .prose table {
+    width: 100% !important;
+    font-size: 9.5pt !important;
+  }
+  /* A superfície de leitura (sépia/papel) é escolha de tela: no papel ela só
+     gastaria tinta. Alvo é um atributo e não o `style` inline — a cor só existe
+     como estilo quando o tema NÃO é "sistema", então casar por
+     `[style*="background"]` funcionaria ou não conforme a preferência do
+     leitor, que é o pior tipo de regra. */
+  [data-reader-surface] {
+    background: transparent !important;
+    padding: 0 !important;
   }
 }
 

@@ -91,3 +91,31 @@ export function readingMinutes(markdown: string): number {
   const minutes = countWords(markdown) / PROSE_WPM + (blocks * SECONDS_PER_CODE_BLOCK) / 60;
   return Math.max(1, Math.round(minutes));
 }
+
+/**
+ * O H1 do próprio markdown, se houver.
+ *
+ * Existe porque a coluna `title` e o título de verdade divergiram: as 25 aulas
+ * em produção têm `title` = "aula-01-quarkus-build-time" (nome do arquivo de
+ * origem) e, na primeira linha do conteúdo, "# Aula 01 — Introdução ao Quarkus
+ * e ao Modelo Build-Time". Para quem abre um link compartilhado ou um .md
+ * exportado, o segundo é o título; o primeiro é ruído de importação.
+ *
+ * Devolve null quando não há H1 — aí a coluna é a única fonte e vale.
+ */
+export function titleFromMarkdown(markdown: string): string | null {
+  let dentro = false;
+  for (const l of markdown.split("\n")) {
+    if (/^\s*```/.test(l)) {
+      dentro = !dentro;
+      continue;
+    }
+    if (dentro) continue;
+    const m = /^#\s+(.+?)\s*$/.exec(l);
+    if (m) return m[1];
+    // Só a PRIMEIRA linha de conteúdo conta: um `# ` no meio do texto é seção,
+    // não título do documento.
+    if (l.trim()) return null;
+  }
+  return null;
+}
